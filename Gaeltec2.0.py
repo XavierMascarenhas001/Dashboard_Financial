@@ -587,7 +587,7 @@ st.markdown("<h1>📊 Data Management Dashboard</h1>", unsafe_allow_html=True)
 # -------------------------------
 # --- Upload Aggregated Parquet file ---
 # --- Aggregated Parquet file from GitHub ---
-aggregated_url = "https://raw.githubusercontent.com/username/repo/branch/path/to/aggregated_file.parquet"
+aggregated_url = r"CF_Teams_aggregated.parquet"
 df = pd.read_parquet(aggregated_url)
 df.columns = df.columns.str.strip().str.lower()  # normalize columns
 
@@ -597,7 +597,7 @@ if 'datetouse' in df.columns:
     df['datetouse'] = df['datetouse'].dt.normalize()
 
 # --- Resume Parquet file from GitHub (for %Complete pie chart) ---
-resume_url = "https://raw.githubusercontent.com/username/repo/branch/path/to/resume_file.parquet"
+resume_url = r"CF_Teams_resume.parquet"
 resume_df = pd.read_parquet(resume_url)
 resume_df.columns = resume_df.columns.str.strip().str.lower()  # normalize columns
 
