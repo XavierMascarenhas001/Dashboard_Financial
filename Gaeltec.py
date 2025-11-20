@@ -586,20 +586,22 @@ st.markdown("<h1>📊 Data Management Dashboard</h1>", unsafe_allow_html=True)
 # --- File Upload & Initial DF ---
 # -------------------------------
 # --- Upload Aggregated Parquet file ---
-# --- Aggregated Parquet file from GitHub ---
-aggregated_url = r"CF_Teams_aggregated.parquet"
-df = pd.read_parquet(aggregated_url)
-df.columns = df.columns.str.strip().str.lower()  # normalize columns
+# --- Load aggregated Parquet file ---
+aggregated_file = r"CF_Teams_aggregated.parquet"
+if aggregated_file is not None:
+    df = pd.read_parquet(aggregated_file)
+    df.columns = df.columns.str.strip().str.lower()  # normalize columns
 
-if 'datetouse' in df.columns:
-    df['datetouse'] = pd.to_datetime(df['datetouse'], errors='coerce')
-    df = df.dropna(subset=['datetouse'])
-    df['datetouse'] = df['datetouse'].dt.normalize()
+    if 'datetouse' in df.columns:
+        df['datetouse'] = pd.to_datetime(df['datetouse'], errors='coerce')
+        df = df.dropna(subset=['datetouse'])
+        df['datetouse'] = df['datetouse'].dt.normalize()
 
-# --- Resume Parquet file from GitHub (for %Complete pie chart) ---
-resume_url = r"CF_Teams_resume.parquet"
-resume_df = pd.read_parquet(resume_url)
-resume_df.columns = resume_df.columns.str.strip().str.lower()  # normalize columns
+# --- Load Resume Parquet file (for %Complete pie chart) ---
+resume_file = r"CF_Teams_resume.parquet"
+if resume_file is not None:
+    resume_df = pd.read_parquet(resume_file)
+    resume_df.columns = resume_df.columns.str.strip().str.lower()  # normalize columns
 
     # -------------------------------
     # -------------------------------
