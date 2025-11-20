@@ -679,7 +679,7 @@ if resume_file is not None:
     formatted_variation = f"{variation_sum:,.2f}".replace(",", " ").replace(".", ",")
 
     # Money logo
-    money_logo_path = r"C:\Users\Xavier.Mascarenhas\OneDrive - Gaeltec Utilities Ltd\Desktop\Gaeltec\01-Templates\Images\Pound.png"
+    money_logo_path = r"Images/Pound.png"
     money_logo = Image.open(money_logo_path).resize((40, 40))
     buffered = BytesIO()
     money_logo.save(buffered, format="PNG")
@@ -778,7 +778,7 @@ if resume_file is not None:
     col_map, col_desc = st.columns([2, 1])
     with col_map:
         st.header("🗺️ Regional Map View")
-        folder_path = r"C:\Users\Xavier.Mascarenhas\OneDrive - Gaeltec Utilities Ltd\Desktop\Gaeltec\06_Programs\Maps"
+        folder_path = r"Maps"
         file_list = glob.glob(os.path.join(folder_path, "*.json"))
 
         if not file_list:
