@@ -973,9 +973,13 @@ if resume_file is not None:
         fig.update_layout(
             title=f"{cat_name} Overview",
             xaxis_title="Mapping",
-            yaxis_title=y_axis_label,
-            plot_bgcolor='transparent',
-            paper_bgcolor='transparent'
+            yaxis_title=y_axis_label
+        )
+        
+        # Add background colors separately
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
         )
 
         # Display the chart
