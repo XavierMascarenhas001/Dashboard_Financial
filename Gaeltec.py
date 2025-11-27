@@ -969,7 +969,16 @@ if resume_file is not None:
             title=f"{cat_name} Overview",
             labels={'Mapped': 'Mapping', 'Total': y_axis_label}
         )
-    
+
+        # Set bar color explicitly
+        fig.update_traces(
+            marker=dict(
+                color='orange',  # Force orange color
+                line=dict(color='white', width=2)  # Add border
+            ),
+            textfont=dict(color='white', size=14)
+        )
+        
         fig.update_layout(
             plot_bgcolor='black',
             paper_bgcolor='black',
