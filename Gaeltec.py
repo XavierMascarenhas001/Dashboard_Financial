@@ -968,12 +968,17 @@ if resume_file is not None:
             title=f"{cat_name} Overview"
         )
 
-        # FIX: Force Y-axis to show the actual values
-        max_value = bar_data['Total'].max()
-        fig.update_layout(
-            yaxis=dict(
-                range=[0, max_value * 1.1]  # Add 10% padding
-            )
+        # FIX: More explicit Y-axis configuration
+        fig.update_yaxes(
+            range=[0, bar_data['Total'].max() * 1.1],
+            showgrid=True,
+            zeroline=True
+        )
+
+        # Also ensure text is visible
+        fig.update_traces(
+            texttemplate='%{y}',
+            textposition='outside'
         )
 
         # NO styling at all
