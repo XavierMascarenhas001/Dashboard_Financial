@@ -977,14 +977,13 @@ if resume_file is not None:
             xaxis_title="Mapping",
             yaxis_title=y_axis_label
         )
-        # Use a unique key for each chart
-        chart_key = f"chart_{cat_name}"
-        click = plotly_events(
+
+        # Use native Streamlit plotly_chart with selection
+        selection = st.plotly_chart(
             fig,
-            click_event=True,
-            override_height=500,
-            override_width="100%",
-            key=chart_key
+            on_select="rerun",
+            key=f"select_{cat_name}",
+            height=500
         )
     
         # Drill-down when clicking
@@ -1014,9 +1013,7 @@ if resume_file is not None:
             display_cols = [c for c in display_cols if c in selected_rows.columns]
     
             st.dataframe(selected_rows[display_cols], use_container_width=True)
-            # Store drill-down state to prevent chart disappearance
-            st.session_state[f"drilldown_{cat_name}"] = True
-    
+
             # Excel Export
             buffer = BytesIO()
             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
