@@ -967,7 +967,6 @@ if resume_file is not None:
             color='Total',
             text='Total',
             title=f"{cat_name} Overview",
-            color_continuous_scale='Oranges',
             labels={'Mapped': 'Mapping', 'Total': y_axis_label}
         )
     
