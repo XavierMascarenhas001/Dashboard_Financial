@@ -915,8 +915,6 @@ if resume_file is not None:
 
     for cat_name, keys, y_label in categories:
 
-        st.subheader(f"🔹 {cat_name}")
-
         # Only process if columns exist
         if 'item' not in filtered_df.columns or 'mapped' not in filtered_df.columns:
             st.warning("Missing required columns: item / mapped")
@@ -982,7 +980,7 @@ if resume_file is not None:
         st.plotly_chart(fig, use_container_width=True, height=500)
 
         # COLLAPSIBLE BUTTONS SECTION
-        with st.expander("🔍 Explore whats inside the graph", expanded=False):
+        with st.expander("🔍 Click to explore more information", expanded=False):
             st.subheader("Select Mapping to Drill-down:")
             
             # Option 1: Buttons in columns
