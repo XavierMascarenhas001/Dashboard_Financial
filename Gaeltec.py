@@ -967,7 +967,7 @@ if resume_file is not None:
             color='Total',
             text='Total',
             title=f"{cat_name} Overview",
-            color_continuous_scale=['#FF8C00', '#FFA500', '#FFB347', '#FFD700'],
+            color_discrete_sequence=['#FF4500', '#FF6347', '#FF7F50', '#FFA500', '#FFD700'],
             labels={'Mapped': 'Mapping', 'Total': y_axis_label}
         )
     
