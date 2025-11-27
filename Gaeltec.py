@@ -11,6 +11,7 @@ from PIL import Image
 from io import BytesIO
 import base64
 from streamlit_plotly_events import plotly_events
+import plotly.graph_objects as go
 
 # --- Page config for wide layout ---
 st.set_page_config(
@@ -958,45 +959,39 @@ if resume_file is not None:
         # Update Streamlit subheader with total
         st.subheader(f"🔹 {cat_name} — Total: {grand_total:,.2f}")
 
-
         # Draw the bar chart
-        fig = px.bar(
-            bar_data,
-            x='Mapped',
-            y='Total',
-            color='Total',
-            text='Total',
-            title=f"{cat_name} Overview",
-            labels={'Mapped': 'Mapping', 'Total': y_axis_label}
-        )
+        fig = go.Figure()
 
-        # In your chart code, add explicit text formatting:
-        fig.update_traces(
+        fig.add_trace(go.Bar(
+            x=bar_data['Mapped'],
+            y=bar_data['Total'],
+            text=bar_data['Total'],
+            textposition='outside',
             marker=dict(
                 color='orange',
                 line=dict(color='white', width=2)
             ),
-            textfont=dict(color='white', size=14),
-            texttemplate='%{y:,.2f}',  # Explicitly format the text
-            textposition='outside'
-        )
-        
+            texttemplate='%{y:,.2f}',
+            hovertemplate='<b>%{x}</b><br>Total: %{y:,.2f}<extra></extra>'
+        ))
+
         fig.update_layout(
+            title=f"{cat_name} Overview",
+            xaxis_title="Mapping",
+            yaxis_title=y_axis_label,
             plot_bgcolor='black',
             paper_bgcolor='black',
             font=dict(color='white'),
             xaxis=dict(showgrid=False),
             yaxis=dict(showgrid=True, gridcolor='gray')
         )
-    
-        # 🔥 Correctly indented clickable chart
+
         click = plotly_events(
             fig,
             click_event=True,
             override_height=500,
             override_width="100%"
         )
-
     
         # Drill-down when clicking
         if click:
