@@ -12,6 +12,7 @@ from io import BytesIO
 import base64
 from streamlit_plotly_events import plotly_events
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 # --- Page config for wide layout ---
 st.set_page_config(
@@ -960,6 +961,16 @@ if resume_file is not None:
         st.subheader(f"🔹 {cat_name} — Total: {grand_total:,.2f}")
 
         # Draw the bar chart
+        # Test with a simple matplotlib chart as reference
+        st.write("🔍 **Reference Matplotlib Chart:**")
+        fig_matplotlib, ax = plt.subplots()
+        ax.bar(bar_data['Mapped'], bar_data['Total'])
+        ax.set_title(f"{cat_name} - Matplotlib Reference")
+        plt.xticks(rotation=45)
+        st.pyplot(fig_matplotlib)
+
+        # Draw the bar chart with explicit settings
+        st.write("🔍 **Plotly Chart:**")
         fig = px.bar(
             bar_data,
             x='Mapped', 
@@ -967,21 +978,28 @@ if resume_file is not None:
             text='Total',
             title=f"{cat_name} Overview"
         )
-
-        # FIX: More explicit Y-axis configuration
-        fig.update_yaxes(
-            range=[0, bar_data['Total'].max() * 1.1],
-            showgrid=True,
-            zeroline=True
+        
+        # Force explicit layout
+        fig.update_layout(
+            yaxis=dict(
+                range=[0, max(bar_data['Total'].max() * 1.1, 1)],  # Ensure at least 0-1 range
+                showticklabels=True,
+                showgrid=True
+            ),
+            xaxis=dict(
+                showticklabels=True
+            )
         )
-
-        # Also ensure text is visible
+        
         fig.update_traces(
-            texttemplate='%{y}',
+            texttemplate='%{y:,.1f}',
             textposition='outside'
         )
 
-        # NO styling at all
+        # Show the figure JSON to see what Plotly is actually creating
+        st.write("🔍 **Plotly Figure JSON:**")
+        st.json(fig.to_json())
+
         click = plotly_events(
             fig,
             click_event=True,
