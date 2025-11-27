@@ -970,13 +970,15 @@ if resume_file is not None:
             labels={'Mapped': 'Mapping', 'Total': y_axis_label}
         )
 
-        # Set bar color explicitly
+        # In your chart code, add explicit text formatting:
         fig.update_traces(
             marker=dict(
-                color='orange',  # Force orange color
-                line=dict(color='white', width=2)  # Add border
+                color='orange',
+                line=dict(color='white', width=2)
             ),
-            textfont=dict(color='white', size=14)
+            textfont=dict(color='white', size=14),
+            texttemplate='%{y:,.2f}',  # Explicitly format the text
+            textposition='outside'
         )
         
         fig.update_layout(
