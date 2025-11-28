@@ -1025,7 +1025,7 @@ if resume_file is not None:
                 ).dt.strftime("%d/%m/%Y")
                 selected_rows.loc[selected_rows['datetouse'].isna(), 'datetouse_display'] = "Unplanned"
             
-            extra_cols = ['pole','poling team','team_name', 'projectmanager', 'project', 'shire', 'segmentdesc', 'sourcefile']
+            extra_cols = ['pole','qsub','poling team','team_name', 'projectmanager', 'project', 'shire', 'segmentdesc', 'sourcefile']
             selected_rows = selected_rows.rename(columns={"poling team": "code"})
             selected_rows = selected_rows.rename(columns={"team_name": "team lider"})
             extra_cols = [c if c != "poling team" else "code" for c in extra_cols]
