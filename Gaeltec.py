@@ -1026,39 +1026,41 @@ if resume_file is not None:
                 selected_rows.loc[selected_rows['datetouse'].isna(), 'datetouse_display'] = "Unplanned"
 
 
+            # Your original approach but working:
+            extra_cols = ['pole','qsub','poling team','team_name', 'projectmanager', 'project', 'shire', 'segmentdesc', 'sourcefile']
 
-
-            # --- Rename columns FIRST ---
+            # Rename first
             selected_rows = selected_rows.rename(columns={
-                "poling team": "code",
+                "poling team": "code", 
                 "team_name": "team lider"
             })
 
-            # --- Now define extra columns using the NEW names ---
-            extra_cols = [
-                'pole',
-                'qsub',
-                'code',           # renamed
-                'team lider',     # renamed
-                'projectmanager',
-                'project',
-                'shire',
-                'segmentdesc',
-                'sourcefile'
-            ]
+            # Update the extra_cols list to use new names
+            extra_cols = [c if c != "poling team" else "code" for c in extra_cols]
+            extra_cols = [c if c != "team_name" else "team lider" for c in extra_cols]
 
-            # --- Create display date column ---
+            # Filter to only existing columns
+            extra_cols = [c for c in extra_cols if c in selected_rows.columns]
+
+            # Create display date
             if 'datetouse' in selected_rows.columns:
                 selected_rows['datetouse_display'] = pd.to_datetime(
                     selected_rows['datetouse'], errors='coerce'
                 ).dt.strftime("%d/%m/%Y")
-
                 selected_rows.loc[selected_rows['datetouse'].isna(), 'datetouse_display'] = "Unplanned"
 
-            # --- Build final columns only if present ---
-            display_cols = ['mapped', 'datetouse_display'] + [
-                c for c in extra_cols if c in selected_rows.columns
-            ]
+            display_cols = ['mapped', 'datetouse_display'] + extra_cols
+            display_cols = [c for c in display_cols if c in selected_rows.columns]
+
+            if not selected_rows.empty:
+                st.dataframe(selected_rows[display_cols], use_container_width=True)
+                st.write(f"**Total records:** {len(selected_rows)}")
+    
+                if 'qsub_clean' in selected_rows.columns:
+                    total_qsub = selected_rows['qsub_clean'].sum()
+                    st.write(f"Total QSUB: {total_qsub:,.2f}")
+            else:
+                st.info("No records found for this selection")
 
             #extra_cols = ['pole','qsub','poling team','team_name', 'projectmanager', 'project', 'shire', 'segmentdesc', 'sourcefile']
             #selected_rows = selected_rows.rename(columns={"poling team": "code"})
