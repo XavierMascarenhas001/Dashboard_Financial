@@ -1344,16 +1344,26 @@ for cat_name, keys, y_label in categories:
                     df_bar.loc[df_bar['datetouse'].isna(), 'datetouse_display'] = "Unplanned"
 
                 # Merge Material Code for Excel too
-                if 'miscelaneous' in locals() and 'a' in miscelaneous.columns and 'k' in miscelaneous.columns:
-                    miscel_subset = miscelaneous[['a','k']].rename(columns={'a':'c','k':'material code'})
-                    df_bar = df_bar.merge(
-                        miscel_subset,
-                        how='left',
-                        left_on='mapped',
-                        right_on='c'
+                if 'miscelaneous' in locals() and 'column_b' in miscelaneous.columns and 'column_k' in miscelaneous.columns:
+                    # Normalize columns to avoid mismatches
+                    miscelaneous.columns = miscelaneous.columns.str.strip().str.lower()
+                    df_bar.columns = df_bar.columns.str.strip().str.lower()
+
+                    # Rename columns for merge
+                    miscel_subset = miscelaneous[['column_b', 'column_k']].rename(
+                        columns={'column_b': 'item', 'column_k': 'material code'}
                     )
-                    if 'c' in df_bar.columns:
-                        df_bar = df_bar.drop(columns=['c'])
+
+                    # Merge using the 'item' column (CF_aggregated column C)
+                    if 'mapped' in df_bar.columns:
+                        df_bar = df_bar.merge(
+                            miscel_subset,
+                            how='left',
+                            left_on='mapped',
+                            right_on='item'
+                        )
+        if 'item' in df_bar.columns:
+            df_bar = df_bar.drop(columns=['item'])
 
                 cols_to_include = ['mapped', 'datetouse_display'] + extra_cols
                 if 'material code' in df_bar.columns and 'material code' not in cols_to_include:
