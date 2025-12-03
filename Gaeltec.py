@@ -1269,20 +1269,31 @@ for cat_name, keys, y_label in categories:
         # -------------------------------
         # --- Merge Material Code ---
         # -------------------------------
-        if 'miscelaneous' in locals():
-            cf_key_col = 'item'
-            miscel_key_col = 'column_b'
-            material_col = 'column_k'
+        # --- Troubleshoot: Columns Check ---
+        st.subheader("🔍 Troubleshooting Columns")
 
-            if cf_key_col in selected_rows.columns and miscel_key_col in miscelaneous.columns:
-                selected_rows = selected_rows.merge(
-                    miscelaneous[[miscel_key_col, material_col]].rename(columns={material_col:'material code'}),
-                    left_on=cf_key_col,
-                    right_on=miscel_key_col,
-                    how='left'
-                )
-                if miscel_key_col in selected_rows.columns:
-                    selected_rows = selected_rows.drop(columns=[miscel_key_col])
+        # CF_aggregated columns
+        st.write("CF_aggregated columns:", filtered_df.columns.tolist())
+
+        if 'miscelaneous' in locals():
+            st.write("Miscelaneous columns:", miscelaneous.columns.tolist())
+
+           # Normalize columns
+            filtered_df.columns = filtered_df.columns.str.strip().str.lower()
+            miscelaneous.columns = miscelaneous.columns.str.strip().str.lower()
+
+            # Ensure keys are strings and stripped
+            filtered_df['item'] = filtered_df['item'].astype(str).str.strip().str.lower()
+            miscelaneous['column_b'] = miscelaneous['column_b'].astype(str).str.strip().str.lower()
+            miscelaneous['column_k'] = miscelaneous['column_k'].astype(str).str.strip()
+
+            # Check for duplicate keys in miscelaneous
+            dup_keys = miscelaneous['column_b'][miscelaneous['column_b'].duplicated()]
+            st.write("Duplicate keys in miscelaneous['column_b']:", dup_keys.tolist())
+
+            # Find which CF_aggregated items do NOT exist in miscelaneous
+            missing_keys = set(filtered_df['item'].unique()) - set(miscelaneous['column_b'].unique())
+            st.write("Keys in CF_aggregated not found in miscelaneous:", missing_keys)
 
         # -------------------------------
         # --- Display Table ---
