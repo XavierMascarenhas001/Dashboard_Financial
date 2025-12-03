@@ -1268,21 +1268,23 @@ for cat_name, keys, y_label in categories:
         # -------------------------------
         # --- Merge Material Code from Miscelaneous ---
         # -------------------------------
-        if 'miscelaneous' in locals():
-            miscelaneous.columns = miscelaneous.columns.str.strip().str.lower()
-            if 'a' in miscelaneous.columns and 'k' in miscelaneous.columns:
-                miscelaneous_subset = miscelaneous[['a', 'k']].copy()
-                miscelaneous_subset = miscelaneous_subset.rename(columns={'a':'c','k':'material code'})
-                # Merge on 'mapped' from selected_rows and 'c' from miscelaneous
-                selected_rows = selected_rows.merge(
-                    miscelaneous_subset,
-                    how='left',
-                    left_on='mapped',
-                    right_on='c'
-                )
-                if 'c' in selected_rows.columns:
-                    selected_rows = selected_rows.drop(columns=['c'])
+        if 'miscelaneous' in locals() and 'A' in miscelaneous.columns and 'K' in miscelaneous.columns:
+            # Make sure columns are stripped & lowercase to avoid mismatch
+            miscelaneous_cols = miscelaneous.columns.str.strip().str.lower()
+            miscelaneous.columns = miscelaneous_cols
 
+            # Column names in selected_rows (CF_aggregated) and miscelaneous
+            cf_key_col = 'c'  # column C in CF_aggregated
+            miscel_key_col = 'a'  # column A in miscelaneous
+            material_col = 'k'   # column K in miscelaneous
+
+            if cf_key_col in selected_rows.columns and miscel_key_col in miscelaneous.columns:
+                selected_rows = selected_rows.merge(
+                    miscelaneous[[miscel_key_col, material_col]].rename(columns={material_col: 'material code'}),
+                    left_on=cf_key_col,
+                    right_on=miscel_key_col,
+                    how='left'
+                )
         # -------------------------------
         # --- Create display date ---
         # -------------------------------
