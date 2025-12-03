@@ -1139,8 +1139,6 @@ if misc_file is not None:
 # --- Mapping Bar Charts + Drill-down + Excel Export ---
 # -------------------------------
 # -------------------------------
-# --- Mapping Bar Charts + Drill-down + Excel Export ---
-# -------------------------------
 st.header("📊 Mapping Charts")
 convert_to_miles = st.checkbox("Convert Equipment/Conductor Length to Miles")
 
@@ -1164,6 +1162,24 @@ def sanitize_sheet_name(name: str) -> str:
     name = re.sub(r'[^\x00-\x7F]', '_', name)  # remove Unicode like m²
     return name[:31]
 
+# -------------------------------
+# --- Troubleshoot: Columns Check ---
+# -------------------------------
+st.subheader("🔍 Troubleshooting Columns")
+st.write("CF_aggregated columns:", filtered_df.columns.tolist())
+if 'miscelaneous' in locals():
+    st.write("Miscelaneous columns:", miscelaneous.columns.tolist())
+
+# Normalize and convert keys to string
+filtered_df.columns = filtered_df.columns.str.strip().str.lower()
+if 'miscelaneous' in locals():
+    miscelaneous.columns = miscelaneous.columns.str.strip().str.lower()
+    miscelaneous['column_b'] = miscelaneous['column_b'].astype(str).str.strip()
+    miscelaneous['column_k'] = miscelaneous['column_k'].astype(str).str.strip()
+
+# -------------------------------
+# --- Mapping Charts Loop ---
+# -------------------------------
 for cat_name, keys, y_label in categories:
 
     # Only process if columns exist
@@ -1173,7 +1189,6 @@ for cat_name, keys, y_label in categories:
 
     # Build regex pattern for this category’s keys
     pattern = '|'.join([re.escape(k) for k in keys.keys()])
-
     mask = filtered_df['item'].astype(str).str.contains(pattern, case=False, na=False)
     sub_df = filtered_df[mask]
 
@@ -1203,13 +1218,10 @@ for cat_name, keys, y_label in categories:
         bar_data['Total'] = bar_data['Total'] * 0.621371
         y_axis_label = "Length (Miles)"
 
-    # Compute grand total for the category
     grand_total = bar_data['Total'].sum()
-
-    # Update Streamlit subheader with total
     st.subheader(f"🔹 {cat_name} — Total: {grand_total:,.2f}")
 
-    # Draw the bar chart
+    # Draw bar chart
     fig = go.Figure(data=[
         go.Bar(
             x=bar_data['Mapped'].astype(str).tolist(),
@@ -1219,7 +1231,6 @@ for cat_name, keys, y_label in categories:
             textposition='outside'
         )
     ])
-
     fig.update_layout(
         title=f"{cat_name} Overview",
         xaxis_title="Mapping",
@@ -1228,15 +1239,14 @@ for cat_name, keys, y_label in categories:
         paper_bgcolor='rgba(0,0,0,0)',
         yaxis=dict(gridcolor='rgba(255,255,255,0.3)')
     )
-
-    # Display the chart
     st.plotly_chart(fig, use_container_width=True, height=500)
 
-    # COLLAPSIBLE BUTTONS SECTION
+    # -------------------------------
+    # --- Drill-down ---
+    # -------------------------------
     with st.expander("🔍 Click to explore more information", expanded=False):
         st.subheader("Select Mapping to Drill-down:")
-
-        cols = st.columns(3)  # 3 buttons per row
+        cols = st.columns(3)
         for idx, mapping_value in enumerate(bar_data['Mapped']):
             col_idx = idx % 3
             with cols[col_idx]:
@@ -1248,7 +1258,6 @@ for cat_name, keys, y_label in categories:
     selected_mapping = st.session_state.get(f"selected_{cat_name}")
     if selected_mapping:
         st.subheader(f"Details for: **{selected_mapping}**")
-
         if st.button("❌ Clear Selection", key=f"clear_{cat_name}"):
             del st.session_state[f"selected_{cat_name}"]
             st.rerun()
@@ -1257,49 +1266,48 @@ for cat_name, keys, y_label in categories:
         selected_rows.columns = selected_rows.columns.str.strip().str.lower()
         selected_rows = selected_rows.loc[:, ~selected_rows.columns.duplicated()]
 
-        # Merge Material Code from Miscelaneous
-        if 'miscelaneous' in locals() and 'column_b' in miscelaneous.columns and 'column_k' in miscelaneous.columns:
-            miscelaneous.columns = miscelaneous.columns.str.strip().str.lower()
-            selected_rows.columns = selected_rows.columns.str.strip().str.lower()
-
-            cf_key_col = 'item'            # CF_aggregated column C
-            miscel_key_col = 'column_b'    # Miscelaneous column B
-            material_col = 'column_k'      # Miscelaneous column K
+        # -------------------------------
+        # --- Merge Material Code ---
+        # -------------------------------
+        if 'miscelaneous' in locals():
+            cf_key_col = 'item'
+            miscel_key_col = 'column_b'
+            material_col = 'column_k'
 
             if cf_key_col in selected_rows.columns and miscel_key_col in miscelaneous.columns:
                 selected_rows = selected_rows.merge(
-                    miscelaneous[[miscel_key_col, material_col]].rename(columns={material_col: 'material code'}),
+                    miscelaneous[[miscel_key_col, material_col]].rename(columns={material_col:'material code'}),
                     left_on=cf_key_col,
                     right_on=miscel_key_col,
                     how='left'
                 )
+                if miscel_key_col in selected_rows.columns:
+                    selected_rows = selected_rows.drop(columns=[miscel_key_col])
 
-        # Display date
+        # -------------------------------
+        # --- Display Table ---
+        # -------------------------------
         if 'datetouse' in selected_rows.columns:
             selected_rows['datetouse_display'] = pd.to_datetime(
                 selected_rows['datetouse'], errors='coerce'
             ).dt.strftime("%d/%m/%Y")
             selected_rows.loc[selected_rows['datetouse'].isna(), 'datetouse_display'] = "Unplanned"
 
-        # Extra columns
         extra_cols = ['pole','qsub','poling team','team_name', 'projectmanager', 'project', 'shire', 'segmentdesc','segmentcode', 'sourcefile']
-        selected_rows = selected_rows.rename(columns={"poling team": "code", "team_name": "team lider"})
-        extra_cols = [c if c != "poling team" else "code" for c in extra_cols]
-        extra_cols = [c if c != "team_name" else "team lider" for c in extra_cols]
+        selected_rows = selected_rows.rename(columns={"poling team":"code","team_name":"team lider"})
+        extra_cols = [c if c!="poling team" else "code" for c in extra_cols]
+        extra_cols = [c if c!="team_name" else "team lider" for c in extra_cols]
 
-        # Build display columns
-        display_cols = ['mapped', 'datetouse_display'] + extra_cols
+        display_cols = ['mapped','datetouse_display'] + extra_cols
         if 'material code' in selected_rows.columns and 'material code' not in display_cols:
             display_cols.append('material code')
         display_cols = [c for c in display_cols if c in selected_rows.columns]
 
-        # Display table
         if not selected_rows.empty:
             st.dataframe(selected_rows[display_cols], use_container_width=True)
             st.write(f"**Total records:** {len(selected_rows)}")
             if 'qsub_clean' in selected_rows.columns:
-                total_qsub = selected_rows['qsub_clean'].sum()
-                st.write(f"Total QSUB: {total_qsub:,.2f}")
+                st.write(f"Total QSUB: {selected_rows['qsub_clean'].sum():,.2f}")
         else:
             st.info("No records found for this selection")
 
