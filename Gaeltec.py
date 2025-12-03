@@ -1267,11 +1267,12 @@ for cat_name, keys, y_label in categories:
         selected_rows.columns = selected_rows.columns.str.strip().str.lower()
         selected_rows = selected_rows.loc[:, ~selected_rows.columns.duplicated()]
 
-        # Merge Material Code from miscelaneous
         if 'miscelaneous' in locals() and 'column_b' in miscelaneous.columns and 'column_k' in miscelaneous.columns:
-            cf_key_col = 'item'          # CF_aggregated column C
-            miscel_key_col = 'column_b'  # miscelaneous column A
-            material_col = 'column_k'    # miscelaneous column C
+            selected_rows = selected_rows.merge(
+                miscelaneous[['column_b', 'column_k']].rename(columns={'column_b':'item', 'column_k':'material code'}),
+                on='item',  # now both are normalized strings
+                how='left'
+            )
 
             if cf_key_col in selected_rows.columns and miscel_key_col in miscelaneous.columns:
                 selected_rows = selected_rows.merge(
@@ -1296,8 +1297,11 @@ for cat_name, keys, y_label in categories:
         extra_cols = [c if c != "team_name" else "team lider" for c in extra_cols]
 
         display_cols = ['mapped', 'datetouse_display'] + extra_cols
-        if 'material code' in selected_rows.columns and 'material code' not in display_cols:
-            display_cols.append('material code')
+        if 'material code' in selected_rows.columns:
+            missing_materials = selected_rows['material code'].isna().sum()
+            st.write(f"Rows without Material Code after merge: {missing_materials}")
+        else:
+            st.write("Material Code column was not created")
 
         display_cols = [c for c in display_cols if c in selected_rows.columns]
 
