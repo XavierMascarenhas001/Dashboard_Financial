@@ -1398,40 +1398,40 @@ for cat_name, keys, y_label in categories:
 
 st.subheader("🔍 Material Dictionary Debug")
 
-material_dict = {}   # default
+material_dict = {}  # default
 
-if misc_df in locals():
+# Check if misc_df exists
+if "misc_df" in locals():
 
-    st.write("Miscelaneous columns detected:", misc_df.columns.tolist())
+    st.write("Miscellaneous columns detected:", misc_df.columns.tolist())
 
-    # Ensure required columns exist
-    if 'Column_B' in misc_df.columns and 'Column_K' in misc_df.columns:
+    # Ensure required columns exist BEFORE lowering
+    if "Column_B".lower() in misc_df.columns.str.lower() and \
+       "Column_K".lower() in misc_df.columns.str.lower():
 
         # Normalize column names
         misc_df.columns = misc_df.columns.str.strip().str.lower()
 
-        # Rename after lowering so we always use lowercase
-        # column_b = key
-        # column_k = value
-        if 'column_b' in misc_df.columns and 'column_k' in misc_df.columns:
+        # Now check lowercase names
+        if "column_b" in misc_df.columns and "column_k" in misc_df.columns:
 
             # Normalize content values
-            misc_df['column_b'] = (
-                misc_df['column_b']
+            misc_df["column_b"] = (
+                misc_df["column_b"]
                 .astype(str)
                 .str.strip()
                 .str.lower()
             )
-            misc_df['column_k'] = (
-                misc_df['column_k']
+            misc_df["column_k"] = (
+                misc_df["column_k"]
                 .astype(str)
                 .str.strip()
             )
 
             # Build dictionary
             material_dict = dict(zip(
-                misc_df['column_b'],
-                misc_df['column_k']
+                misc_df["column_b"],
+                misc_df["column_k"]
             ))
 
             st.success(f"Material dictionary generated with **{len(material_dict)}** entries.")
