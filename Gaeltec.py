@@ -1005,33 +1005,21 @@ if misc_file is not None:
     # --- Miscelaneous ---
     # -------------------------------
 # -------------------------------
-    st.markdown("<h3 style='text-align:center; color:white;'>🔍 Miscellaneous Data Preview</h3>", unsafe_allow_html=True)
+    st.write("Current working directory:", os.getcwd())
+    st.write("Files in repo:", os.listdir())
 
+    # Test if misc_file exists
+    if os.path.exists("miscelaneous.parquet"):
+        st.success("Miscellaneous file exists!")
+    else:
+        st.error("Miscellaneous file not found in repo!")
+
+    # Try reading
     try:
-        if 'misc_df' in locals() and misc_df is not None:
-            st.write(f"Columns detected in miscelaneous.parquet: {misc_df.columns.tolist()}")
-
-            # Normalize column names and content
-            misc_df.columns = misc_df.columns.str.strip().str.lower()
-            if 'column_b' in misc_df.columns and 'column_k' in misc_df.columns:
-                misc_df['column_b'] = misc_df['column_b'].astype(str).str.strip().str.lower()
-                misc_df['column_k'] = misc_df['column_k'].astype(str).str.strip()
-
-                # Preview first 50 rows
-                st.write("### First 50 rows of miscelaneous.parquet:")
-                st.dataframe(misc_df.head(50), use_container_width=True)
-
-                # Optional: create a dictionary for later mapping
-                material_dict = dict(zip(misc_df['column_b'], misc_df['column_k']))
-               st.write(f"🔹 Material dictionary generated with **{len(material_dict)} entries**")
-
-            else:
-                st.warning("❌ Columns 'Column_B' or 'Column_K' not found in miscelaneous.parquet")
-        else:
-           st.warning("⚠️ Miscelaneous parquet not loaded or empty")
-
+        misc_df = pd.read_parquet("miscelaneous.parquet")
+        st.success(f"Loaded miscelaneous.parquet with {len(misc_df)} rows")
     except Exception as e:
-        st.error(f"Could not preview miscelaneous.parquet: {e}")
+        st.error(f"Could not read miscelaneous.parquet: {e}")
         
         
     # -------------------------------
