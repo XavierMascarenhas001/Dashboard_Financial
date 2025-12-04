@@ -689,6 +689,33 @@ if misc_file is not None:
         misc_df.columns = misc_df.columns.str.strip().str.lower()  # normalize columns
     except Exception as e:
         st.warning(f"Could not load Miscellaneous parquet: {e}")
+
+# -------------------------------
+# --- Build Material Dictionary ---
+# -------------------------------
+material_dict = {}  # default
+if 'misc_df' in locals():
+    st.write("Miscellaneous columns detected:", misc_df.columns.tolist())
+
+    if 'column_b' in misc_df.columns and 'column_k' in misc_df.columns:
+        misc_df['column_b'] = misc_df['column_b'].astype(str).str.strip().str.lower()
+        misc_df['column_k'] = misc_df['column_k'].astype(str).str.strip()
+
+        material_dict = dict(zip(misc_df['column_b'], misc_df['column_k']))
+        st.success(f"🔍 Material dictionary created with **{len(material_dict)}** entries")
+
+        # Preview first 50 entries
+        dict_df = pd.DataFrame(
+            list(material_dict.items()),
+            columns=["column_b (key)", "column_k (material code)"]
+        ).sort_values("column_b (key)").reset_index(drop=True)
+        st.write("### Preview of Material Dictionary (first 50 entries):")
+        st.dataframe(dict_df.head(50), use_container_width=True)
+    else:
+        st.warning("❌ Miscellaneous file missing required columns 'Column_B' or 'Column_K'")
+else:
+    st.warning("⚠️ Miscellaneous file not loaded")
+    
     # -------------------------------
     # --- Sidebar Filters ---
     # -------------------------------
@@ -1370,36 +1397,3 @@ for cat_name, keys, y_label in categories:
             file_name=f"{cat_name}_Details_Separated.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
-# --------------------------------------------------
-#  MATERIAL DICTIONARY GENERATION (Column_B → Column_K)
-# --------------------------------------------------
-material_dict = {}  # default
-
-if 'misc_df' in locals():
-    st.write("Miscellaneous columns detected:", misc_df.columns.tolist())
-
-    # Normalize column names
-    misc_df.columns = misc_df.columns.str.strip().str.lower()
-
-    if 'column_b' in misc_df.columns and 'column_k' in misc_df.columns:
-        # Normalize content
-        misc_df['column_b'] = misc_df['column_b'].astype(str).str.strip().str.lower()
-        misc_df['column_k'] = misc_df['column_k'].astype(str).str.strip()
-
-        # Build dictionary
-        material_dict = dict(zip(misc_df['column_b'], misc_df['column_k']))
-        st.success(f"🔍 Material dictionary created with **{len(material_dict)}** entries")
-
-        # Preview first 50 entries
-        dict_df = (
-            pd.DataFrame(list(material_dict.items()), columns=["column_b (key)", "column_k (material code)"])
-            .sort_values("column_b (key)")
-            .reset_index(drop=True)
-        )
-        st.write("### Preview of Material Dictionary (first 50 entries):")
-        st.dataframe(dict_df.head(50), use_container_width=True)
-    else:
-        st.warning("❌ Miscellaneous file missing required columns 'Column_B' or 'Column_K'")
-else:
-    st.warning("⚠️ Miscellaneous file not loaded")
