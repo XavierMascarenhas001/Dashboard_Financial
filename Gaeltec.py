@@ -1018,7 +1018,7 @@ if misc_file is not None:
 
     # Optional: show sample of material dictionary
     if 'column_b' in misc_df.columns and 'column_k' in misc_df.columns:
-       misc_df['column_b'] = misc_df['column_b'].astype(str).str.strip().str.lower()
+        misc_df['column_b'] = misc_df['column_b'].astype(str).str.strip().str.lower()
         misc_df['column_k'] = misc_df['column_k'].astype(str).str.strip()
     
         material_dict = dict(zip(misc_df['column_b'], misc_df['column_k']))
