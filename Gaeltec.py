@@ -826,7 +826,7 @@ if misc_file is not None:
                     mode='lines+markers',
                     line=dict(width=3, color='#32CD32'),
                     marker=dict(size=6, color='#32CD32'),
-                    hovertemplate='<b>Date: %{x}</b><br>Revenue: €%{y:,.0f}<extra></extra>'
+                    hovertemplate='<b>Date: %{x}</b><br>Revenue: £%{y:,.0f}<extra></extra>'
                 )
                 fig_revenue.update_layout(
                     height=600,  # taller chart
@@ -841,7 +841,7 @@ if misc_file is not None:
                         type='date'
                     ),
                     yaxis=dict(
-                        title='Revenue (€)',
+                        title='Revenue (£)',
                         tickformat=",.0f",
                         gridcolor='rgba(128,128,128,0.2)',
                         autorange=True,
@@ -949,7 +949,7 @@ if misc_file is not None:
         
             
             # --- Pie Chart: % Complete ---
-# -------------------------------
+    # -------------------------------
     # --- Works Complete Pie Chart ---
     # -------------------------------
     st.markdown("<h3 style='text-align:center; color:white;'>Works Complete</h3>", unsafe_allow_html=True)
@@ -1008,7 +1008,7 @@ if misc_file is not None:
     st.markdown("<h3 style='text-align:center; color:white;'>🔍 Miscellaneous Data Preview</h3>", unsafe_allow_html=True)
 
     try:
-       if 'misc_df' in locals() and misc_df is not None:
+        if 'misc_df' in locals() and misc_df is not None:
             st.write(f"Columns detected in miscelaneous.parquet: {misc_df.columns.tolist()}")
 
             # Normalize column names and content
@@ -1021,29 +1021,14 @@ if misc_file is not None:
                 st.write("### First 50 rows of miscelaneous.parquet:")
                 st.dataframe(misc_df.head(50), use_container_width=True)
 
-                # Optional: show a simple summary chart of Column_K counts
-                summary_df = misc_df['column_k'].value_counts().reset_index()
-                summary_df.columns = ['Material Code', 'Count']
+                # Optional: create a dictionary for later mapping
+                material_dict = dict(zip(misc_df['column_b'], misc_df['column_k']))
+               st.write(f"🔹 Material dictionary generated with **{len(material_dict)} entries**")
 
-                fig = px.bar(
-                    summary_df.head(20),  # top 20 codes
-                    x='Material Code',
-                    y='Count',
-                    title="Top 20 Material Codes",
-                    text='Count'
-                )
-                fig.update_traces(textposition='outside', marker_color='#32CD32')
-                fig.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white'),
-                    xaxis_tickangle=45
-                )
-                st.plotly_chart(fig, use_container_width=True, height=400)
             else:
                 st.warning("❌ Columns 'Column_B' or 'Column_K' not found in miscelaneous.parquet")
         else:
-            st.warning("⚠️ Miscelaneous parquet not loaded or empty")
+           st.warning("⚠️ Miscelaneous parquet not loaded or empty")
 
     except Exception as e:
         st.error(f"Could not preview miscelaneous.parquet: {e}")
