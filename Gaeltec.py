@@ -812,7 +812,7 @@ if misc_file is not None:
                 revenue_by_date = chart_df.groupby('datetouse_dt')['total'].sum().reset_index()
                 revenue_by_date = revenue_by_date.sort_values('datetouse_dt')
                 revenue_by_date['total_formatted'] = revenue_by_date['total'].apply(
-                    lambda x: f"£{x:,.0f}" if x >= 1000 else f"€{x:.0f}"
+                    lambda x: f"£{x:,.0f}" if x >= 1000 else f"£{x:.0f}"
                 )
 
                 fig_revenue = px.line(
