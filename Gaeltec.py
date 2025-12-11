@@ -1179,6 +1179,8 @@ if misc_file is not None:
                 left_on='item',
                 right_on='column_b'
             )
+            
+            filtered_df = filtered_df.rename(columns={"column_k": "material code"})
 
         # Build regex pattern for this category’s keys
         pattern = '|'.join([re.escape(k) for k in keys.keys()])
@@ -1288,7 +1290,7 @@ if misc_file is not None:
 
 
             # Your original approach but working:
-            extra_cols = ['pole','qsub','poling team','team_name','segmentcode','segmentdesc', 'projectmanager', 'project', 'shire','column_k' , 'sourcefile']
+            extra_cols = ['pole','qsub','poling team','team_name','segmentcode','segmentdesc', 'projectmanager', 'project', 'shire','material code' , 'sourcefile']
             
             # Rename first
             selected_rows = selected_rows.rename(columns={
