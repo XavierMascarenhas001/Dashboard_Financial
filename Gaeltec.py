@@ -1392,6 +1392,7 @@ if misc_file is not None:
 # 🛠️ Works Section
 # -----------------------------
 st.header("🛠️ Works")
+st.header("🛠️ Works")
 
 if misc_df is not None:
     # Ensure keys are strings for mapping
@@ -1408,21 +1409,21 @@ if misc_df is not None:
     ].copy()
 
     # Map Column_I values to the poles
-    poles_df['column_i'] = poles_df['item'].map(item_to_column_i)
+    poles_df['Work instructions'] = poles_df['item'].map(item_to_column_i)
 
     # Keep only rows where all values are valid
     poles_df_clean = poles_df[
         poles_df['pole'].notna() & (poles_df['pole'].astype(str).str.lower() != "nan") &
-        poles_df['column_i'].notna() & (poles_df['column_i'].astype(str).str.lower() != "nan") &
+        poles_df['Work instructions'].notna() & (poles_df['Work instructions'].astype(str).str.lower() != "nan") &
         poles_df['comment'].notna() & (poles_df['comment'].astype(str).str.lower() != "nan") &
         poles_df['team_name'].notna() & (poles_df['team_name'].astype(str).str.lower() != "nan")
-    ][['pole', 'column_i', 'comment', 'team_name']]
+    ][['pole', 'Work instructions', 'comment', 'team_name']]
 
     # Convert to list of lists
     poles_list = poles_df_clean.values.tolist()
 
     # Display the cleaned list in the dashboard
-    st.write("Pole, Column_I, Comment, and Team Name (all 'nan' strings removed):")
+    st.write("Work instructions")
     st.write(poles_list)
 
     # Optional: make a dropdown for interactive selection
