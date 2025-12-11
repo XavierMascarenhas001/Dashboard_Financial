@@ -1304,7 +1304,8 @@ if misc_file is not None:
 
             # Filter to only existing columns
             extra_cols = [c for c in extra_cols if c in selected_rows.columns]
-
+            # DEBUG: show the final columns being used
+            st.write("🔹 Columns displayed:", extra_cols)
             # Create display date
             if 'datetouse' in selected_rows.columns:
                 selected_rows['datetouse_display'] = pd.to_datetime(
