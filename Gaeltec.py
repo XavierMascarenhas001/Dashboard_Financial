@@ -1181,6 +1181,7 @@ if misc_file is not None:
             )
             
             filtered_df = filtered_df.rename(columns={"column_k": "material code"})
+            filtered_df = filtered_df.drop_duplicates()
 
         # Build regex pattern for this category’s keys
         pattern = '|'.join([re.escape(k) for k in keys.keys()])
@@ -1290,7 +1291,7 @@ if misc_file is not None:
 
 
             # Your original approach but working:
-            extra_cols = ['pole','qsub','poling team','team_name','segmentcode','segmentdesc', 'projectmanager', 'project', 'shire','material code' , 'sourcefile']
+            extra_cols = ['pole','qsub','datetouse','poling team','team_name','segmentcode','segmentdesc', 'projectmanager', 'project', 'shire','material code' , 'sourcefile']
             
             # Rename first
             selected_rows = selected_rows.rename(columns={
@@ -1305,7 +1306,7 @@ if misc_file is not None:
             # Filter to only existing columns
             extra_cols = [c for c in extra_cols if c in selected_rows.columns]
             # DEBUG: show the final columns being used
-            st.write("🔹 Columns displayed:", extra_cols)
+            st.write("🔹 Information Resumed:")
             # Create display date
             if 'datetouse' in selected_rows.columns:
                 selected_rows['datetouse_display'] = pd.to_datetime(
