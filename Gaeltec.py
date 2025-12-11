@@ -1173,11 +1173,12 @@ if misc_file is not None:
             
         # Merge misc_df to bring Column_K into filtered_df
         if misc_df is not None:
+            misc_df_renamed = misc_df[['column_b', 'column_k']].rename(columns={'column_b': 'misc_b', 'column_k': 'misc_k'})
             filtered_df = filtered_df.merge(
-                misc_df[['column_b', 'column_k']],
+                misc_df_renamed,
                 how='left',
                 left_on='item',
-                right_on='column_b'
+                right_on='misc_b'
             )
             
             filtered_df = filtered_df.rename(columns={"column_k": "material code"})
