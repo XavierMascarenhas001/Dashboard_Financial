@@ -1291,7 +1291,7 @@ if misc_file is not None:
 
 
             # Your original approach but working:
-            extra_cols = ['pole','qsub','datetouse','poling team','team_name','segmentcode','segmentdesc', 'projectmanager', 'project', 'shire','material code' , 'sourcefile']
+            extra_cols = ['pole','qsub','datetouse_display','poling team','team_name','segmentdesc','segmentcode', 'projectmanager', 'project', 'shire','material code' , 'sourcefile']
             
             # Rename first
             selected_rows = selected_rows.rename(columns={
@@ -1302,6 +1302,10 @@ if misc_file is not None:
             # Update the extra_cols list to use new names
             extra_cols = [c if c != "poling team" else "code" for c in extra_cols]
             extra_cols = [c if c != "team_name" else "team lider" for c in extra_cols]
+            extra_cols = [c if c != "datetouse_display" else "date" for c in extra_cols]
+            extra_cols = [c if c != "segmentcode" else "segment" for c in extra_cols]
+            extra_cols = [c if c != "segmentdesc" else "Region" for c in extra_cols]
+
 
             # Filter to only existing columns
             extra_cols = [c for c in extra_cols if c in selected_rows.columns]
@@ -1314,7 +1318,7 @@ if misc_file is not None:
                 ).dt.strftime("%d/%m/%Y")
                 selected_rows.loc[selected_rows['datetouse'].isna(), 'datetouse_display'] = "Unplanned"
 
-            display_cols = ['mapped', 'datetouse_display'] + extra_cols
+            display_cols = ['mapped'] + extra_cols
             display_cols = [c for c in display_cols if c in selected_rows.columns]
 
             if not selected_rows.empty:
