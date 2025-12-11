@@ -682,11 +682,21 @@ if resume_file is not None:
     resume_df.columns = resume_df.columns.str.strip().str.lower()  # normalize columns
 
 # --- Load Miscellaneous Parquet file ---
-misc_file = r"Miscelaneous.parquet"
+# --- Load Miscellaneous Parquet file ---
+misc_file = "miscelaneous.parquet"
+
 if misc_file is not None:
     try:
         misc_df = pd.read_parquet(misc_file)
         misc_df.columns = misc_df.columns.str.strip().str.lower()  # normalize columns
+        
+        # Create dropdowns for each column
+        selected_b = st.selectbox("Select Column_B value:", misc_df["column_b"].dropna().unique().tolist())
+        selected_i = st.selectbox("Select Column_I value:", misc_df["column_i"].dropna().unique().tolist())
+        selected_k = st.selectbox("Select Column_K value:", misc_df["column_k"].dropna().unique().tolist())
+
+        st.write("Selected values:", selected_b, selected_i, selected_k)
+
     except Exception as e:
         st.warning(f"Could not load Miscellaneous parquet: {e}")
 
