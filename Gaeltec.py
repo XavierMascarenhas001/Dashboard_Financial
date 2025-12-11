@@ -1302,8 +1302,6 @@ if misc_file is not None:
             # Update the extra_cols list to use new names
             extra_cols = [c if c != "poling team" else "code" for c in extra_cols]
             extra_cols = [c if c != "team_name" else "team lider" for c in extra_cols]
-            extra_cols = [c if c != "segmentcode" else "Segment_" for c in extra_cols]
-            extra_cols = [c if c != "segmentdesc" else "location" for c in extra_cols]
 
 
             # Filter to only existing columns
