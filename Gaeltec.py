@@ -15,6 +15,9 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import requests
 from streamlit import cache_data
+from docx import Document
+from docx.shared import Pt
+from docx.enum.text import WD_COLOR_INDEX
 
 # --- Page config for wide layout ---
 st.set_page_config(
