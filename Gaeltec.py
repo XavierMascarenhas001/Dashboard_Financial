@@ -1531,6 +1531,8 @@ if misc_df is not None:
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             showlegend=False,
+            width=800,       # explicitly wider
+            height=800,      # explicitly taller
             annotations=[
                 dict(
                     text=f"Total<br>{len(poles_df_clean)}",
