@@ -1499,24 +1499,50 @@ if misc_df is not None:
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
 
-    # 📊 Pie Chart (same indentation level as download button)
+    # 📊 Work Instructions Pie Chart
     st.subheader("📊 Most Repeated Work Instructions")
 
-    work_counts = (
-        poles_df_clean['Work instructions']
-        .value_counts()
-        .reset_index()
-    )
-    work_counts.columns = ['Work instructions', 'Count']
+    if not poles_df_clean.empty:
+        work_data = (
+            poles_df_clean['Work instructions']
+            .value_counts()
+            .reset_index()
+        )
 
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.pie(
-        work_counts['Count'],
-        labels=work_counts['Work instructions'],
-        autopct='%1.1f%%',
-        startangle=90
-    )
-    ax.axis('equal')
+        work_data.columns = ['Work instructions', 'total']
 
-    st.pyplot(fig)
-    plt.close(fig)
+        fig_work = px.pie(
+            work_data,
+            names='Work instructions',
+            values='total',
+            hole=0.4
+        )
+
+        fig_work.update_traces(
+            textinfo='percent+label',
+            textfont_size=14,
+            marker=dict(line=dict(color='#000000', width=1))
+        )
+
+        fig_work.update_layout(
+            title_text="",
+            title_font_size=16,
+            font=dict(color='white'),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            showlegend=False,
+            annotations=[
+                dict(
+                    text=f"Total<br>{len(poles_df_clean)}",
+                    x=0.5,
+                    y=0.5,
+                    font_size=16,
+                    showarrow=False
+                )
+            ]
+        )
+
+        st.plotly_chart(fig_work, use_container_width=True)
+
+    else:
+        st.info("No work instruction data available.")
