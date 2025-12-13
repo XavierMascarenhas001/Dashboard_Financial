@@ -1499,7 +1499,7 @@ if misc_df is not None:
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
 
-    # 📊 Pie chart
+    # 📊 Pie Chart (same indentation level as download button)
     st.subheader("📊 Most Repeated Work Instructions")
 
     work_counts = (
@@ -1507,16 +1507,28 @@ if misc_df is not None:
         .value_counts()
         .reset_index()
     )
-
     work_counts.columns = ['Work instructions', 'Count']
 
-    st.pyplot(
-        work_counts
-        .set_index('Work instructions')
-        .plot.pie(
-            y='Count',
-            autopct='%1.1f%%',
-            legend=False,
-            figsize=(6, 6)
-        )
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.pie(
+        work_counts['Count'],
+        labels=work_counts['Work instructions'],
+        autopct='%1.1f%%',
+        startangle=90
+    )
+    ax.axis('equal')
+
+    st.pyplot(fig)
+    plt.close(fig)
+
+    # 📄 Word download (same indentation level)
+    st.subheader("📄 Download Word File")
+
+    word_file = poles_to_word(poles_df_clean)
+
+    st.download_button(
+        label="⬇️ Download Work Instructions (.docx)",
+        data=word_file,
+        file_name="Pole_Work_Instructions.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
