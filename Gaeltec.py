@@ -1567,7 +1567,9 @@ if agg_view is not None and 'total' in agg_view.columns:
     # Drop invalid rows
     filtered_agg = filtered_agg.dropna(subset=['datetouse_dt', 'team_name', 'total'])
 
-    if not filtered_agg.empty:
+    if filtered_agg.empty:
+        st.info("No time-based data available for the selected filters.")
+    else:
         # Group by date and team, summing totals
         time_df = filtered_agg.groupby(['datetouse_dt', 'team_name'], as_index=False)['total'].sum()
 
@@ -1595,7 +1597,6 @@ if agg_view is not None and 'total' in agg_view.columns:
         )
 
         st.plotly_chart(fig_time, use_container_width=True)
-    else:
-        st.info("No time-based data available for the selected filters.")
+
 else:
     st.info("No 'total' column found in aggregated data.")
