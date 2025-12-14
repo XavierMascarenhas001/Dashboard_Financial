@@ -1576,3 +1576,47 @@ if misc_df is not None:
         file_name="Pole_Work_Instructions.docx",
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
+
+st.subheader("📈 Jobs per Team per Day")
+
+# Ensure date column is datetime
+poles_df_view['datetouse_display'] = pd.to_datetime(
+    poles_df_view['datetouse_display'],
+    errors='coerce'
+)
+
+# Aggregate: total jobs per team per day
+time_df = (
+    poles_df_view
+    .dropna(subset=['datetouse_display', 'team_name'])
+    .groupby(
+        [poles_df_view['datetouse_display'].dt.date, 'team_name']
+    )
+    .size()
+    .reset_index(name='total')
+)
+
+time_df.rename(columns={'datetouse_display': 'day'}, inplace=True)
+
+if not time_df.empty:
+    fig_time = px.line(
+        time_df,
+        x='day',
+        y='total',
+        color='team_name',
+        markers=True
+    )
+
+    fig_time.update_layout(
+        xaxis_title="Day",
+        yaxis_title="Total jobs",
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        legend_title_text="Team",
+        height=500
+    )
+
+    st.plotly_chart(fig_time, use_container_width=True)
+
+else:
+    st.info("No time-based data available for the selected filters.")
