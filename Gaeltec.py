@@ -1580,13 +1580,12 @@ if misc_df is not None:
     # -----------------------------
     # 📈 Aggregated data (time series source)
     # -----------------------------
-    # -----------------------------
     agg_view = df.copy()
 
     # Apply segment filter if available
     if selected_segment != 'All' and 'segmentcode' in agg_view.columns:
         agg_view = agg_view[
-            agg_view['segmentcode'].astype(str) == selected_segment
+            agg_view['segmentcode'].astype(str) == str(selected_segment)
         ]
 
     # Apply pole filter if selected
@@ -1594,38 +1593,41 @@ if misc_df is not None:
         agg_view = agg_view[
             agg_view['pole'].astype(str) == str(selected_pole)
         ]
-        
+
     st.subheader("📈 Jobs per Team per Day")
 
-    time_df = (
-        agg_view
-        .dropna(subset=['datetouse_dt', 'team_name'])
-        .groupby(
-            [agg_view['datetouse_dt'], 'team_name']
-        )
-        .size()
-        .reset_index(name='total')
-    )
-
-    if not time_df.empty:
-        fig_time = px.line(
-            time_df,
-            x='datetouse_dt',
-            y='total',
-            color='team_name',
-            markers=True
+    # Aggregate: sum of 'total' per team per day
+    if 'total' in agg_view.columns:
+        time_df = (
+            agg_view
+            .dropna(subset=['datetouse_dt', 'team_name'])
+            .groupby(
+                [agg_view['datetouse_dt'], 'team_name']
+            )['total']
+            .sum()
+            .reset_index()
         )
 
-        fig_time.update_layout(
-            xaxis_title="Day",
-            yaxis_title="Total jobs",
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            legend_title_text="Team",
-            height=500
-        )
+        if not time_df.empty:
+            fig_time = px.line(
+                time_df,
+                x='datetouse_dt',
+                y='total',
+                color='team_name',
+                markers=True
+            )
 
-        st.plotly_chart(fig_time, use_container_width=True)
+            fig_time.update_layout(
+                xaxis_title="Day",
+                yaxis_title="Total jobs",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                legend_title_text="Team",
+                height=500
+            )
 
+            st.plotly_chart(fig_time, use_container_width=True)
+        else:
+            st.info("No time-based data available for the selected filters.")
     else:
-        st.info("No time-based data available for the selected filters.")
+        st.info("Column 'total' not found in aggregated data.")
