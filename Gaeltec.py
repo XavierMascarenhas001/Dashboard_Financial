@@ -1476,76 +1476,47 @@ if misc_df is not None:
     filtered_df['item'] = filtered_df['item'].astype(str)
     misc_df['column_b'] = misc_df['column_b'].astype(str)
 
+    # Map items to work instructions
     item_to_column_i = misc_df.set_index('column_b')['column_i'].to_dict()
-
-    poles_df = filtered_df[
-        filtered_df['pole'].notna() &
-        (filtered_df['pole'].astype(str).str.lower() != "nan")
-    ].copy()
-
+    poles_df = filtered_df[filtered_df['pole'].notna() & (filtered_df['pole'].astype(str).str.lower() != "nan")].copy()
     poles_df['Work instructions'] = poles_df['item'].map(item_to_column_i)
 
-    poles_df_clean = poles_df[
-        poles_df['Work instructions'].notna() &
-        poles_df['comment'].notna() &
-        poles_df['team_name'].notna()
-    ][['pole', 'segmentcode', 'Work instructions', 'comment', 'team_name']]
+    # Keep only rows with valid instructions, comments, and team_name
+    poles_df_clean = poles_df.dropna(subset=['Work instructions', 'comment', 'team_name'])[
+        ['pole', 'segmentcode', 'Work instructions', 'comment', 'team_name']
+    ]
 
     # -----------------------------
-    # 🔘 Segment Code selector
+    # 🔘 Segment selector
     # -----------------------------
-    segment_options = ['All'] + sorted(
-        poles_df_clean['segmentcode']
-        .dropna()
-        .astype(str)
-        .unique()
-        .tolist()
-    )
-
-    selected_segment = st.selectbox(
-        "Select a segment code:",
-        segment_options
-    )
+    segment_options = ['All'] + sorted(poles_df_clean['segmentcode'].dropna().astype(str).unique())
+    selected_segment = st.selectbox("Select a segment code:", segment_options)
 
     if selected_segment != 'All':
-        poles_df_view = poles_df_clean[
-            poles_df_clean['segmentcode'].astype(str) == selected_segment
-        ]
+        poles_df_view = poles_df_clean[poles_df_clean['segmentcode'].astype(str) == selected_segment]
     else:
         poles_df_view = poles_df_clean.copy()
 
     # -----------------------------
-    # 🎯 Pole selector (CASCADING)
+    # 🎯 Pole selector (Cascading)
     # -----------------------------
-    pole_options = sorted(
-        poles_df_view['pole']
-        .dropna()
-        .astype(str)
-        .unique()
-        .tolist()
-    )
+    pole_options = sorted(poles_df_view['pole'].dropna().astype(str).unique())
+    selected_pole = st.selectbox("Select a pole to view details:", ["All"] + pole_options)
 
-    selected_pole = st.selectbox(
-        "Select a pole to view details:",
-        pole_options
-    )
+    # Filter by selected pole
+    if selected_pole != "All":
+        poles_df_view = poles_df_view[poles_df_view['pole'].astype(str) == selected_pole]
 
-    if selected_pole:
-        selected_data = poles_df_view[
-            poles_df_view['pole'].astype(str) == selected_pole
-        ]
+    # Display pole details if one is selected
+    if selected_pole != "All" and not poles_df_view.empty:
         st.write(f"Details for pole **{selected_pole}**:")
-        st.dataframe(selected_data)
+        st.dataframe(poles_df_view)
 
     # -----------------------------
-    # 📊 Pie chart (segment-aware)
+    # 📊 Pie chart (Works breakdown)
     # -----------------------------
     if not poles_df_view.empty:
-        work_data = (
-            poles_df_view['Work instructions']
-            .value_counts()
-            .reset_index()
-        )
+        work_data = poles_df_view['Work instructions'].value_counts().reset_index()
         work_data.columns = ['Work instructions', 'total']
 
         fig_work = px.pie(
@@ -1554,55 +1525,48 @@ if misc_df is not None:
             values='total',
             hole=0.4
         )
-
-        fig_work.update_traces(
-            textinfo='percent+label',
-            textfont_size=16
-        )
-
-        fig_work.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            showlegend=False
-        )
-
+        fig_work.update_traces(textinfo='percent+label', textfont_size=16)
+        fig_work.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
         st.plotly_chart(fig_work, use_container_width=True)
 
     # -----------------------------
-    # 📄 Word export (segment + pole aware)
+    # 📄 Word export
     # -----------------------------
-    word_file = poles_to_word(poles_df_view)
-
-    st.download_button(
-        label="⬇️ Download Work Instructions (.docx)",
-        data=word_file,
-        file_name="Pole_Work_Instructions.docx",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
-
+    if not poles_df_view.empty:
+        word_file = poles_to_word(poles_df_view)
+        st.download_button(
+            label="⬇️ Download Work Instructions (.docx)",
+            data=word_file,
+            file_name="Pole_Work_Instructions.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
 
 # -----------------------------
 # 📈 Jobs per Team per Day (Segment + Pole aware)
 # -----------------------------
 st.subheader("📈 Jobs per Team per Day")
 
-# Make a filtered view
-filtered_agg = agg_view.copy()
-if selected_segment != 'All':
-    filtered_agg = filtered_agg[filtered_agg['segmentcode'].astype(str) == selected_segment]
-if selected_pole:
-    filtered_agg = filtered_agg[filtered_agg['pole'].astype(str) == selected_pole]
+if agg_view is not None and 'total' in agg_view.columns:
+    # Apply segment/pole filters
+    filtered_agg = agg_view.copy()
+    if selected_segment != 'All':
+        filtered_agg = filtered_agg[filtered_agg['segmentcode'].astype(str) == selected_segment]
+    if selected_pole != "All":
+        filtered_agg = filtered_agg[filtered_agg['pole'].astype(str) == selected_pole]
 
-if not filtered_agg.empty and 'total' in filtered_agg.columns:
-    time_df = (
-        filtered_agg
-        .dropna(subset=['datetouse_dt', 'team_name'])
-        .groupby(['datetouse_dt', 'team_name'])['total']
-        .sum()
-        .reset_index()
-    )
+    if not filtered_agg.empty:
+        # Aggregate sum per team per day
+        agg_grouped = filtered_agg.dropna(subset=['datetouse_dt', 'team_name']).groupby(
+            ['datetouse_dt', 'team_name']
+        )['total'].sum().reset_index()
 
-    if not time_df.empty:
+        # Fill missing dates for all teams
+        all_dates = pd.date_range(start=agg_grouped['datetouse_dt'].min(), end=agg_grouped['datetouse_dt'].max())
+        all_teams = agg_grouped['team_name'].unique()
+        all_combinations = pd.MultiIndex.from_product([all_dates, all_teams], names=['datetouse_dt', 'team_name'])
+        time_df = agg_grouped.set_index(['datetouse_dt', 'team_name']).reindex(all_combinations, fill_value=0).reset_index()
+
+        # Plot the chart
         fig_time = px.line(
             time_df,
             x='datetouse_dt',
@@ -1615,18 +1579,14 @@ if not filtered_agg.empty and 'total' in filtered_agg.columns:
         fig_time.update_layout(
             xaxis_title="Day",
             yaxis_title="Total jobs",
-            xaxis=dict(
-                tickformat="%d/%m/%Y",
-                tickangle=45
-            ),
+            xaxis=dict(tickformat="%d/%m/%Y", tickangle=45),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             legend_title_text="Team",
             height=500
         )
-
         st.plotly_chart(fig_time, use_container_width=True)
     else:
         st.info("No time-based data available for the selected filters.")
 else:
-    st.info("No 'total' column found in aggregated data or no matching records.")
+    st.info("No 'total' column found in aggregated data.")
