@@ -1580,6 +1580,7 @@ if misc_df is not None:
     # -----------------------------
     # 📈 Aggregated data (time series source)
     # -----------------------------
+    # -----------------------------
     agg_view = df.copy()
 
     # Apply segment filter if available
@@ -1593,7 +1594,8 @@ if misc_df is not None:
         agg_view = agg_view[
             agg_view['pole'].astype(str) == str(selected_pole)
         ]
-   st.subheader("📈 Jobs per Team per Day")
+        
+    st.subheader("📈 Jobs per Team per Day")
 
     time_df = (
         agg_view
