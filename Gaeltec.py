@@ -1551,7 +1551,7 @@ if agg_view is not None and 'total' in agg_view.columns:
     filtered_agg = agg_view.copy()
     if selected_segment != 'All':
         filtered_agg = filtered_agg[filtered_agg['segmentcode'].astype(str) == selected_segment]
-    if selected_pole != "All":
+    if selected_pole:
         filtered_agg = filtered_agg[filtered_agg['pole'].astype(str) == selected_pole]
 
     if not filtered_agg.empty:
@@ -1591,7 +1591,5 @@ if agg_view is not None and 'total' in agg_view.columns:
         st.plotly_chart(fig_time, use_container_width=True)
     else:
         st.info("No time-based data available for the selected filters.")
-else:
-    st.info("No 'total' column found in aggregated data.")
 else:
     st.info("No 'total' column found in aggregated data.")
