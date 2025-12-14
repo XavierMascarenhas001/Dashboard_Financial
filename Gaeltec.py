@@ -749,6 +749,9 @@ if aggregated_file is not None:
         # Handle case where column is missing
         df['datetouse_dt'] = pd.NaT
         df['datetouse_display'] = "Unplanned"
+        
+    # Create agg_view for later use
+    agg_view = df.copy()
 
 # --- Load Resume Parquet file (for %Complete pie chart) ---
 resume_file = r"CF_resume.parquet"
@@ -1577,19 +1580,20 @@ if misc_df is not None:
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
 
-    # -----------------------------
-    # 📈 Aggregated data (time series source)
-    # -----------------------------
-# ---- Here: Add the Jobs per Team per Day chart ----
-if agg_view is not None and 'total' in agg_view.columns:
-    # Apply same filters to agg_view
-    filtered_agg = agg_view.copy()
-    if selected_segment != 'All':
-        filtered_agg = filtered_agg[filtered_agg['segmentcode'].astype(str) == selected_segment]
-    if selected_pole != 'All':
-        filtered_agg = filtered_agg[filtered_agg['pole'].astype(str) == selected_pole]
 
-    # Aggregate sum per team per day
+# -----------------------------
+# 📈 Jobs per Team per Day (Segment + Pole aware)
+# -----------------------------
+st.subheader("📈 Jobs per Team per Day")
+
+# Make a filtered view
+filtered_agg = agg_view.copy()
+if selected_segment != 'All':
+    filtered_agg = filtered_agg[filtered_agg['segmentcode'].astype(str) == selected_segment]
+if selected_pole:
+    filtered_agg = filtered_agg[filtered_agg['pole'].astype(str) == selected_pole]
+
+if not filtered_agg.empty and 'total' in filtered_agg.columns:
     time_df = (
         filtered_agg
         .dropna(subset=['datetouse_dt', 'team_name'])
@@ -1598,7 +1602,6 @@ if agg_view is not None and 'total' in agg_view.columns:
         .reset_index()
     )
 
-    st.subheader("📈 Jobs per Team per Day")
     if not time_df.empty:
         fig_time = px.line(
             time_df,
@@ -1612,7 +1615,10 @@ if agg_view is not None and 'total' in agg_view.columns:
         fig_time.update_layout(
             xaxis_title="Day",
             yaxis_title="Total jobs",
-            xaxis=dict(tickformat="%d/%m/%Y", tickangle=45, dtick="D1"),
+            xaxis=dict(
+                tickformat="%d/%m/%Y",
+                tickangle=45
+            ),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             legend_title_text="Team",
@@ -1622,3 +1628,5 @@ if agg_view is not None and 'total' in agg_view.columns:
         st.plotly_chart(fig_time, use_container_width=True)
     else:
         st.info("No time-based data available for the selected filters.")
+else:
+    st.info("No 'total' column found in aggregated data or no matching records.")
