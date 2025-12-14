@@ -1549,7 +1549,7 @@ st.subheader("📈 Jobs per Team per Day")
 if agg_view is not None and 'total' in agg_view.columns:
     filtered_agg = agg_view.copy()
 
-    # --- Ensure proper string comparison and strip spaces ---
+    # Apply filters
     if selected_segment != 'All' and 'segmentcode' in filtered_agg.columns:
         filtered_agg['segmentcode'] = filtered_agg['segmentcode'].astype(str).str.strip()
         filtered_agg = filtered_agg[filtered_agg['segmentcode'] == str(selected_segment).strip()]
@@ -1558,26 +1558,20 @@ if agg_view is not None and 'total' in agg_view.columns:
         filtered_agg['pole'] = filtered_agg['pole'].astype(str).str.strip()
         filtered_agg = filtered_agg[filtered_agg['pole'] == str(selected_pole).strip()]
 
-    # --- Make sure dates are datetime ---
+    # Ensure datetime
     if 'datetouse_dt' not in filtered_agg.columns:
         filtered_agg['datetouse_dt'] = pd.to_datetime(filtered_agg['datetouse'], errors='coerce')
     else:
         filtered_agg['datetouse_dt'] = pd.to_datetime(filtered_agg['datetouse_dt'], errors='coerce')
 
-    # --- Drop rows with missing dates or team names ---
+    # Drop invalid rows
     filtered_agg = filtered_agg.dropna(subset=['datetouse_dt', 'team_name', 'total'])
 
     if not filtered_agg.empty:
-        # --- Sum per team per day ---
+        # Group by date and team, summing totals
         time_df = filtered_agg.groupby(['datetouse_dt', 'team_name'], as_index=False)['total'].sum()
 
-        # --- Fill missing team/date combinations with 0 ---
-        all_dates = pd.date_range(time_df['datetouse_dt'].min(), time_df['datetouse_dt'].max())
-        all_teams = time_df['team_name'].unique()
-        all_combinations = pd.MultiIndex.from_product([all_dates, all_teams], names=['datetouse_dt', 'team_name'])
-        time_df = time_df.set_index(['datetouse_dt', 'team_name']).reindex(all_combinations, fill_value=0).reset_index()
-
-        # --- Plot chart ---
+        # Plot chart
         fig_time = px.line(
             time_df,
             x='datetouse_dt',
@@ -1590,16 +1584,18 @@ if agg_view is not None and 'total' in agg_view.columns:
         fig_time.update_layout(
             xaxis_title="Day",
             yaxis_title="Total jobs",
-            xaxis=dict(tickformat="%d/%m/%Y", tickangle=45),
+            xaxis=dict(
+                tickformat="%d/%m/%Y",
+                tickangle=45
+            ),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             legend_title_text="Team",
             height=500
         )
+
         st.plotly_chart(fig_time, use_container_width=True)
     else:
         st.info("No time-based data available for the selected filters.")
-else:
-    st.info("No 'total' column found in aggregated data.")
 else:
     st.info("No 'total' column found in aggregated data.")
