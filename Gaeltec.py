@@ -1580,30 +1580,14 @@ if misc_df is not None:
     # -----------------------------
     # 📈 Aggregated data (time series source)
     # -----------------------------
-    agg_view = df.copy()
-
-    # Apply segment filter if available
-    if selected_segment != 'All' and 'segmentcode' in agg_view.columns:
-        agg_view = agg_view[
-            agg_view['segmentcode'].astype(str) == str(selected_segment)
-        ]
-
-    # Apply pole filter if selected
-    if selected_pole and 'pole' in agg_view.columns:
-        agg_view = agg_view[
-            agg_view['pole'].astype(str) == str(selected_pole)
-        ]
-
     st.subheader("📈 Jobs per Team per Day")
 
-    # Aggregate: sum of 'total' per team per day
     if 'total' in agg_view.columns:
+        # Aggregate: sum of 'total' per team per day
         time_df = (
             agg_view
             .dropna(subset=['datetouse_dt', 'team_name'])
-            .groupby(
-                [agg_view['datetouse_dt'], 'team_name']
-            )['total']
+            .groupby(['datetouse_dt', 'team_name'])['total']
             .sum()
             .reset_index()
         )
@@ -1611,15 +1595,21 @@ if misc_df is not None:
         if not time_df.empty:
             fig_time = px.line(
                 time_df,
-                x='datetouse_dt',
+                x='datetouse_dt',          # Use datetime column
                 y='total',
                 color='team_name',
-                markers=True
+                markers=True,
+                hover_data={'datetouse_dt': True, 'team_name': True, 'total': True}
             )
 
             fig_time.update_layout(
                 xaxis_title="Day",
                 yaxis_title="Total jobs",
+                xaxis=dict(
+                    tickformat="%d/%m/%Y",   # nice date format
+                    tickangle=45,
+                    dtick="D1"               # one day intervals
+                ),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 legend_title_text="Team",
@@ -1627,6 +1617,7 @@ if misc_df is not None:
             )
 
             st.plotly_chart(fig_time, use_container_width=True)
+
         else:
             st.info("No time-based data available for the selected filters.")
     else:
