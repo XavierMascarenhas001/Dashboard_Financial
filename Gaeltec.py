@@ -1471,7 +1471,28 @@ if misc_df is not None:
         poles_df['Work instructions'].notna() & (poles_df['Work instructions'].astype(str).str.lower() != "nan") &
         poles_df['comment'].notna() & (poles_df['comment'].astype(str).str.lower() != "nan") &
         poles_df['team_name'].notna() & (poles_df['team_name'].astype(str).str.lower() != "nan")
-    ][['pole', 'Work instructions', 'comment', 'team_name']]
+    ][['segmentcode','pole', 'Work instructions', 'comment', 'team_name']]
+
+    # 🔘 Segment Code selector
+    segment_options = ['All'] + sorted(
+        poles_df_clean['segmentcode']
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
+
+    selected_segment = st.selectbox(
+        "Select a segment code:",
+        segment_options
+    )
+
+    if selected_segment != 'All':
+        poles_df_view = poles_df_clean[
+            poles_df_clean['segmentcode'].astype(str) == selected_segment
+        ]
+    else:
+        poles_df_view = poles_df_clean.copy()
 
     # Convert to list of lists
     poles_list = poles_df_clean.values.tolist()
@@ -1505,7 +1526,7 @@ if misc_df is not None:
 
     if not poles_df_clean.empty:
         work_data = (
-            poles_df_clean['Work instructions']
+            poles_df_view['Work instructions']
             .value_counts()
             .reset_index()
         )
