@@ -1449,31 +1449,30 @@ if misc_file is not None:
 st.header("🛠️ Works")
 
 if misc_df is not None:
-    # Ensure keys are strings for mapping
+    # -----------------------------
+    # Data preparation
+    # -----------------------------
     filtered_df['item'] = filtered_df['item'].astype(str)
     misc_df['column_b'] = misc_df['column_b'].astype(str)
 
-    # Create a mapping dictionary: item -> Column_I
     item_to_column_i = misc_df.set_index('column_b')['column_i'].to_dict()
 
-    # Filter only rows where 'pole' exists
     poles_df = filtered_df[
-        filtered_df['pole'].notna() & 
+        filtered_df['pole'].notna() &
         (filtered_df['pole'].astype(str).str.lower() != "nan")
     ].copy()
 
-    # Map Column_I values to the poles
     poles_df['Work instructions'] = poles_df['item'].map(item_to_column_i)
 
-    # Keep only rows where all values are valid
     poles_df_clean = poles_df[
-        poles_df['pole'].notna() & (poles_df['pole'].astype(str).str.lower() != "nan") &
-        poles_df['Work instructions'].notna() & (poles_df['Work instructions'].astype(str).str.lower() != "nan") &
-        poles_df['comment'].notna() & (poles_df['comment'].astype(str).str.lower() != "nan") &
-        poles_df['team_name'].notna() & (poles_df['team_name'].astype(str).str.lower() != "nan")
-    ][['segmentcode','pole', 'Work instructions', 'comment', 'team_name']]
+        poles_df['Work instructions'].notna() &
+        poles_df['comment'].notna() &
+        poles_df['team_name'].notna()
+    ][['pole', 'segmentcode', 'Work instructions', 'comment', 'team_name']]
 
+    # -----------------------------
     # 🔘 Segment Code selector
+    # -----------------------------
     segment_options = ['All'] + sorted(
         poles_df_clean['segmentcode']
         .dropna()
@@ -1494,43 +1493,38 @@ if misc_df is not None:
     else:
         poles_df_view = poles_df_clean.copy()
 
-    # Convert to list of lists
-    poles_list = poles_df_clean.values.tolist()
-
-    # Display the cleaned list in the dashboard
-    st.write("Work Instructions, Comment, and Team Name")
-    #st.write(poles_list)
-
-    # Optional: make a dropdown for interactive selection
-    pole_options = poles_df_clean['pole'].unique().tolist()
-    selected_pole = st.selectbox("Select a pole to view details:", pole_options)
-
-    if selected_pole:
-        selected_data = poles_df_clean.loc[poles_df_clean['pole'] == selected_pole]
-        st.write(f"Details for pole **{selected_pole}**:")
-        st.write(selected_data)
-
-    st.subheader("📄 Download Word File")
-
-    word_file = poles_to_word(poles_df_clean)
-
-    st.download_button(
-        label="⬇️ Download Work Instructions (.docx)",
-        data=word_file,
-        file_name="Pole_Work_Instructions.docx",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    # -----------------------------
+    # 🎯 Pole selector (CASCADING)
+    # -----------------------------
+    pole_options = sorted(
+        poles_df_view['pole']
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
     )
 
-    # 📊 Work Instructions Pie Chart
-    st.subheader("📊 Most Repeated Work Instructions")
+    selected_pole = st.selectbox(
+        "Select a pole to view details:",
+        pole_options
+    )
 
-    if not poles_df_clean.empty:
+    if selected_pole:
+        selected_data = poles_df_view[
+            poles_df_view['pole'].astype(str) == selected_pole
+        ]
+        st.write(f"Details for pole **{selected_pole}**:")
+        st.dataframe(selected_data)
+
+    # -----------------------------
+    # 📊 Pie chart (segment-aware)
+    # -----------------------------
+    if not poles_df_view.empty:
         work_data = (
             poles_df_view['Work instructions']
             .value_counts()
             .reset_index()
         )
-
         work_data.columns = ['Work instructions', 'total']
 
         fig_work = px.pie(
@@ -1542,31 +1536,25 @@ if misc_df is not None:
 
         fig_work.update_traces(
             textinfo='percent+label',
-            textfont_size=14,
-            marker=dict(line=dict(color='#000000', width=1))
+            textfont_size=16
         )
 
         fig_work.update_layout(
-            title_text="",
-            title_font_size=16,
-            font=dict(color='white'),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            showlegend=False,
-            width=800,       # explicitly wider
-            height=800,      # explicitly taller
-            annotations=[
-                dict(
-                    text=f"Total<br>{len(poles_df_clean)}",
-                    x=0.5,
-                    y=0.5,
-                    font_size=16,
-                    showarrow=False
-                )
-            ]
+            showlegend=False
         )
 
         st.plotly_chart(fig_work, use_container_width=True)
 
-    else:
-        st.info("No work instruction data available.")
+    # -----------------------------
+    # 📄 Word export (segment + pole aware)
+    # -----------------------------
+    word_file = poles_to_word(poles_df_view)
+
+    st.download_button(
+        label="⬇️ Download Work Instructions (.docx)",
+        data=word_file,
+        file_name="Pole_Work_Instructions.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
