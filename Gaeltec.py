@@ -18,6 +18,7 @@ from streamlit import cache_data
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_COLOR_INDEX
+from collections import OrderedDict
 
 # --- Page config for wide layout ---
 st.set_page_config(
@@ -105,29 +106,44 @@ def get_weather_forecast(api_key, location="Ayrshire"):
 def poles_to_word(df: pd.DataFrame) -> BytesIO:
     doc = Document()
 
+    # Defensive cleaning
+    df = df.copy()
+    df = df.replace(
+        to_replace=["nan", "NaN", "None", None],
+        value=""
+    )
+
     grouped = df.groupby('pole', sort=False)
 
     for pole, group in grouped:
-        try:
-            pole_str = str(int(pole))
-        except:
-            pole_str = str(pole)
+        pole_str = str(pole).strip()
+        if not pole_str:
+            continue
 
-        row_texts = []
+        # Ordered set using dict keys (preserves order, removes duplicates)
+        unique_texts = OrderedDict()
 
         for _, row in group.iterrows():
             parts = []
 
-            if pd.notna(row['Work instructions']):
-                parts.append(str(row['Work instructions']).strip())
+            wi = str(row.get('Work instructions', '')).strip()
+            comment = str(row.get('comment', '')).strip()
 
-            if pd.notna(row['comment']):
-                parts.append(f"({row['comment']})")
+            if wi:
+                parts.append(wi)
+
+            if comment:
+                parts.append(f"({comment})")
 
             if parts:
-                row_texts.append(" ".join(parts))
+                text = " ".join(parts)
 
-        if not row_texts:
+                # Normalize for deduplication
+                normalized = text.lower().strip()
+
+                unique_texts[normalized] = text
+
+        if not unique_texts:
             continue
 
         # Bullet paragraph
@@ -138,7 +154,9 @@ def poles_to_word(df: pd.DataFrame) -> BytesIO:
         run_number.font.name = 'Times New Roman'
         run_number.font.size = Pt(12)
 
-        for i, text in enumerate(row_texts):
+        texts = list(unique_texts.values())
+
+        for i, text in enumerate(texts):
             run_item = p.add_run(text)
             run_item.bold = True
             run_item.font.name = 'Times New Roman'
@@ -147,7 +165,7 @@ def poles_to_word(df: pd.DataFrame) -> BytesIO:
             if "Erect Pole" in text:
                 run_item.font.highlight_color = WD_COLOR_INDEX.RED
 
-            if i < len(row_texts) - 1:
+            if i < len(texts) - 1:
                 p.add_run(" ; ")
 
     buffer = BytesIO()
