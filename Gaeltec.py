@@ -1547,35 +1547,45 @@ if misc_df is not None:
 st.subheader("📈 Jobs per Team per Day")
 
 if agg_view is not None and 'total' in agg_view.columns:
-    filtered_agg = agg_view.copy()
+    time_df = agg_view.copy()
 
-    # Apply filters
-    if selected_segment != 'All' and 'segmentcode' in filtered_agg.columns:
-        filtered_agg['segmentcode'] = filtered_agg['segmentcode'].astype(str).str.strip()
-        filtered_agg = filtered_agg[filtered_agg['segmentcode'] == str(selected_segment).strip()]
+    # ----------------------
+    # --- Apply segment/pole filters ---
+    # ----------------------
+    if selected_segment != ['All']:
+        time_df = time_df[time_df['segmentcode'].isin(selected_segment)]
+    if selected_pole and selected_pole != "All":
+        time_df = time_df[time_df['pole'] == selected_pole]
 
-    if selected_pole and 'pole' in filtered_agg.columns:
-        filtered_agg['pole'] = filtered_agg['pole'].astype(str).str.strip()
-        filtered_agg = filtered_agg[filtered_agg['pole'] == str(selected_pole).strip()]
-
-    # Ensure datetime
-    if 'datetouse_dt' not in filtered_agg.columns:
-        filtered_agg['datetouse_dt'] = pd.to_datetime(filtered_agg['datetouse'], errors='coerce')
+    # ----------------------
+    # --- Ensure datetime ---
+    # ----------------------
+    if 'datetouse_dt' not in time_df.columns:
+        if 'datetouse' in time_df.columns:
+            time_df['datetouse_dt'] = pd.to_datetime(time_df['datetouse'], errors='coerce')
+        else:
+            st.warning("No date column available for time series chart.")
+            time_df['datetouse_dt'] = pd.NaT
     else:
-        filtered_agg['datetouse_dt'] = pd.to_datetime(filtered_agg['datetouse_dt'], errors='coerce')
+        time_df['datetouse_dt'] = pd.to_datetime(time_df['datetouse_dt'], errors='coerce')
 
-    # Drop invalid rows
-    filtered_agg = filtered_agg.dropna(subset=['datetouse_dt', 'team_name', 'total'])
+    # ----------------------
+    # --- Drop invalid rows ---
+    # ----------------------
+    time_df = time_df.dropna(subset=['datetouse_dt', 'team_name', 'total'])
+    time_df['total'] = pd.to_numeric(time_df['total'], errors='coerce')
 
-    if filtered_agg.empty:
-        st.info("No time-based data available for the selected filters.")
-    else:
-        # Group by date and team, summing totals
-        time_df = filtered_agg.groupby(['datetouse_dt', 'team_name'], as_index=False)['total'].sum()
+    if not time_df.empty:
+        # ----------------------
+        # --- Group & sum ---
+        # ----------------------
+        grouped_df = time_df.groupby(['datetouse_dt', 'team_name'], as_index=False)['total'].sum()
 
-        # Plot chart
+        # ----------------------
+        # --- Plot chart ---
+        # ----------------------
         fig_time = px.line(
-            time_df,
+            grouped_df,
             x='datetouse_dt',
             y='total',
             color='team_name',
@@ -1586,10 +1596,7 @@ if agg_view is not None and 'total' in agg_view.columns:
         fig_time.update_layout(
             xaxis_title="Day",
             yaxis_title="Total jobs",
-            xaxis=dict(
-                tickformat="%d/%m/%Y",
-                tickangle=45
-            ),
+            xaxis=dict(tickformat="%d/%m/%Y", tickangle=45),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             legend_title_text="Team",
@@ -1597,6 +1604,7 @@ if agg_view is not None and 'total' in agg_view.columns:
         )
 
         st.plotly_chart(fig_time, use_container_width=True)
-
+    else:
+        st.info("No jobs found for the selected segment/pole/date filters.")
 else:
     st.info("No 'total' column found in aggregated data.")
