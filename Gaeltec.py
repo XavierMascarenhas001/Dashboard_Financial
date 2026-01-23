@@ -1456,7 +1456,7 @@ if misc_file is not None:
                         ).dt.strftime("%d/%m/%Y")
                         df_bar.loc[df_bar['datetouse'].isna(), 'datetouse_display'] = "Unplanned"
 
-                    cols_to_include = ['Output','pole','Quantity','Date','District','Project Manager','Circuit','Segment','PID'] + extra_cols
+                    cols_to_include = ['Output','Quantity','material_code','pole','Date','District','project','Project Manager','Circuit','Segment','team lider','PID', 'sourcefile']
                     cols_to_include = [c for c in cols_to_include if c in df_bar.columns]
                     df_bar = df_bar[cols_to_include]
 
