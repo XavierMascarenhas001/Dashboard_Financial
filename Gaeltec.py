@@ -1419,6 +1419,23 @@ if misc_file is not None:
             display_cols = ['mapped','pole','qsub','datetouse_display'] + extra_cols
             display_cols = [c for c in display_cols if c in selected_rows.columns]
 
+            column_rename_map = {
+                "mapped": "Output",
+                "segmentcode": "Circuit",
+                "datetouse_display": "Date",
+                "qsub": "Quantity",
+                "segmentdesc": "Segment",
+                "shire": "District",
+                "pid_ohl_nr": "PID",
+                "projectmanager": "Project Manager"
+            }
+
+            # 🔥 RENAME FOR DISPLAY
+            selected_rows_display = selected_rows[display_cols].rename(
+                columns=column_rename_map
+            )
+        
+
             if not selected_rows.empty:
                 st.dataframe(selected_rows[display_cols], use_container_width=True)
                 st.write(f"**Total records:** {len(selected_rows)}")
