@@ -731,6 +731,16 @@ categories = [
     ("Foundation & Steelwork 🏗️", foundation_steelwork_keys, "Quantity")
 ]
 
+column_rename_map = {
+    "mapped": "Output",
+    "segmentcode": "Circuit",
+    "datetouse_display": "Date",
+    "qsub": "Quantity",
+    "segmentdesc": "Segment",
+    "shire": "District",
+    "pid_ohl_nr": "PID",
+    "projectmanager": "Project Manager"
+}
 
 # --- Gradient background ---
 gradient_bg = """
@@ -1419,16 +1429,6 @@ if misc_file is not None:
             display_cols = ['mapped','pole','qsub','datetouse_display'] + extra_cols
             display_cols = [c for c in display_cols if c in selected_rows.columns]
 
-            column_rename_map = {
-                "mapped": "Output",
-                "segmentcode": "Circuit",
-                "datetouse_display": "Date",
-                "qsub": "Quantity",
-                "segmentdesc": "Segment",
-                "shire": "District",
-                "pid_ohl_nr": "PID",
-                "projectmanager": "Project Manager"
-            }
 
             # 🔥 RENAME FOR DISPLAY
             selected_rows_display = selected_rows[display_cols].rename(
