@@ -331,7 +331,7 @@ pole_erected_keys = {
     "Erect Single HV/EHV Pole, up to and including 12 metre pole":"Erect HV pole", 
     "Erect Single HV/EHV Pole, up to and including 12 metre pole.":"Erect HV pole",
     "Erect LV Structure Single Pole, up to and including 12 metre pole" :"Erect LV pole",
-    "Erect Section Structure 'H' HV/EHV Pole, up to and including 12 metre pole.":"H HV pole",
+    "Erect Section Structure 'H' HV/EHV Pole, up to and including 12 metre pole.":"H HV pole"
 }
 
 poles_replaced_keys = {
