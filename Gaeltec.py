@@ -327,15 +327,17 @@ pole_keys = {
     "12x325 EHV SINGLE POLE CREOSOTE":"12es"
 }
 
-pole_change_keys = {
-    "Erect Single HV/EHV Pole, up to and including 12 metre pole":"HV pole", 
-    "Erect Single HV/EHV Pole, up to and including 12 metre pole.":"HV pole",
-    "Erect LV Structure Single Pole, up to and including 12 metre pole" :"LV pole",
+pole_erect_keys = {
+    "Erect Single HV/EHV Pole, up to and including 12 metre pole":"Erect HV pole", 
+    "Erect Single HV/EHV Pole, up to and including 12 metre pole.":"Erect HV pole",
+    "Erect LV Structure Single Pole, up to and including 12 metre pole" :"Erect LV pole",
     "Erect Section Structure 'H' HV/EHV Pole, up to and including 12 metre pole.":"H HV pole",
-    "Plumb single pole":"Recover pole",
-    "Recover single pole, up to and including 15 metres in height, and reinstate, all ground conditions":"Recover pole"
 }
 
+pole_replace_keys = {
+    "Recover single pole, up to and including 15 metres in height, and reinstate, all ground conditions":"Recover single pole",
+    "Recover 'A' / 'H' pole, up to and including 15 metres in height, and reinstate, all ground conditions":"Recover H pole"
+}
 
 # --- Equipment / Conductor Mappings ---
 equipment_keys = {
@@ -722,6 +724,7 @@ foundation_steelwork_keys = {
 categories = [
     ("Poles 🪵", pole_keys, "Quantity"),
     ("Poles _changed 🪵", pole_change_keys, "Quantity"),
+    ("Poles _erect 🪵", pole_change_keys, "Quantity"),
     ("Transformers ⚡🏭", transformer_keys, "Quantity"),
     ("Conductors", conductor_keys, "Length (Km)"),
     ("Conductors_2", conductor_2_keys, "Length (Km)"),
@@ -1270,7 +1273,8 @@ if misc_file is not None:
 
     categories = [
         ("Poles 🪵", pole_keys, "Quantity"),
-        ("Poles _changed 🪵", pole_change_keys, "Quantity"),
+        ("Poles _replaced 🪵", pole_replaced, "Quantity"),
+        ("Poles _erect 🪵", pole_erect_keys, "Quantity"),
         ("Transformers ⚡🏭", transformer_keys, "Quantity"),
         ("Conductors", conductor_keys, "Length (Km)"),
         ("Conductors_2", conductor_2_keys, "Length (Km)"),
