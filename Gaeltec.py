@@ -22,6 +22,10 @@ from collections import OrderedDict
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Border, Side
+import io
+from io import BytesIO
+from openpyxl.drawing.image import Image as XLImage
+from openpyxl.styles import numbers
 
 # --- Page config for wide layout ---
 st.set_page_config(
@@ -175,6 +179,28 @@ def poles_to_word(df: pd.DataFrame) -> BytesIO:
     doc.save(buffer)
     buffer.seek(0)
     return buffer
+
+def build_export_df(filtered_df):
+    export_df = filtered_df.copy()
+
+    # Rename columns
+    export_df = export_df.rename(columns=column_rename_map)
+
+    # Keep only columns that actually exist
+    existing_cols = [c for c in export_columns if c in export_df.columns]
+    export_df = export_df[existing_cols]
+
+    return export_df
+
+# Normalize strings: remove leading/trailing spaces, lowercase, remove extra dots
+def normalize_item(s):
+    if pd.isna(s):
+        return ""
+    s = str(s).strip().lower()           # strip spaces and lowercase
+    s = s.replace(".", "")               # remove dots
+    s = re.sub(r"\s+", " ", s)          # collapse multiple spaces
+    return s
+
     
 # --- MAPPINGS ---
 
@@ -721,6 +747,30 @@ foundation_steelwork_keys = {
     "Foundation Block Type 3; 1500mm as SP4019020": "Foundation Block Type 3; 1500mm as SP4019020"
 }
 
+summary_items = [
+    "Erect Single HV/EHV Pole, up to and including 12 metre pole.",
+    "Erect Section Structure 'H' HV/EHV Pole, up to and including 12 metre pole",
+    "Erect LV Structure Single Pole, up to and including 12 metre pole",
+    "Recover single pole, up to and including 15 metres in height, and reinstate, all ground conditions",
+    "Recover 'A' / 'H' pole, up to and including 15 metres in height, and reinstate, all ground conditions",
+    "Erect 11kV/33kV ABSW.",
+    "Erect 11kV Remote Controlled Switch Disconnector ( Soule Auguste ) or Auto Reclosure unit c/w VT, Aerial, RTU & umbilical cable",
+    "Erect pole mounted transformer up to 100kVA 1.ph",
+    "Erect pole mounted transformer up to 200kVA 3.p.h",
+    "Remove pole mounted transformer",
+    "Remove platform mounted or 'H' pole mounted transformer",
+    "Remove 11kV/33kV ABSW",
+    "Remove Auto Reclosure",
+    "Install bare conductor, run out, sag, terminate, bind in and connect jumpers; <100mm²",
+    "Install bare conductor, run out, sag, terminate, bind in and connect jumpers; >=100mm² <200mm²",
+    "Install conductor, run out, sag, terminate, clamp in and connect jumpers; 2c + Earth",
+    "Install conductor, run out, sag, terminate, clamp in and connect jumpers; 4c + Earth",
+    "Install service span including connection to mainline & building / structure",
+    "Remove 1.ph or 3.ph HV fuses",
+    "Erect 3.ph fuse units at single tee off pole or in line pole"
+    
+]
+
 categories = [
     ("Poles 🪵", pole_keys, "Quantity"),
     ("Poles _erected 🪵", pole_erected_keys, "Quantity"),
@@ -741,12 +791,19 @@ column_rename_map = {
     "mapped": "Output",
     "segmentcode": "Circuit",
     "datetouse_display": "Date",
-    "qsub": "Quantity",
+    "qty": "Quantity_original",
+    "qsub": "Quantity_used",
     "segmentdesc": "Segment",
     "shire": "District",
     "pid_ohl_nr": "PID",
     "projectmanager": "Project Manager"
 }
+
+export_columns = [
+    'Output','comment', 'item', 'Quantity_original','Quantity_used', 'material_code','type', 'pole', 'Date',
+    'District', 'project', 'Project Manager', 'Circuit', 'Segment',
+    'team lider', 'PID', 'sourcefile'
+]
 
 # --- Gradient background ---
 gradient_bg = """
@@ -779,37 +836,51 @@ st.markdown("<h1>📊 Data Management Dashboard</h1>", unsafe_allow_html=True)
 # -------------------------------
 # --- Upload Aggregated Parquet file ---
 # --- Load aggregated Parquet file ---
-aggregated_file = r"Master.parquet"
+st.header("Upload Data Files")
+
+aggregated_file = st.file_uploader(
+    "Upload Master.parquet",
+    type=["parquet"],
+    key="master"
+)
+
+agg_view = None
+
 if aggregated_file is not None:
     df = pd.read_parquet(aggregated_file)
     df.columns = df.columns.str.strip().str.lower()  # normalize columns
 
     if 'datetouse' in df.columns:
-        # Convert to datetime where possible
         df['datetouse_dt'] = pd.to_datetime(df['datetouse'], errors='coerce')
-        # Create display column
         df['datetouse_display'] = df['datetouse_dt'].dt.strftime("%d/%m/%Y")
-        # Mark empty dates as "Unplanned"
         df.loc[df['datetouse_dt'].isna(), 'datetouse_display'] = "Unplanned"
-        # OPTIONAL: normalize datetime column for sorting, keeping NaT intact
         df['datetouse_dt'] = df['datetouse_dt'].dt.normalize()
     else:
-        # Handle case where column is missing
         df['datetouse_dt'] = pd.NaT
         df['datetouse_display'] = "Unplanned"
-        
-    # Create agg_view for later use
+
     agg_view = df.copy()
 
 # --- Load Resume Parquet file (for %Complete pie chart) ---
-resume_file = r"CF_resume.parquet"
+resume_file = st.file_uploader(
+    "Upload CF_resume.parquet",
+    type=["parquet"],
+    key="resume"
+)
+
+resume_df = None
+
 if resume_file is not None:
     resume_df = pd.read_parquet(resume_file)
-    resume_df.columns = resume_df.columns.str.strip().str.lower()  # normalize columns
-
+    resume_df.columns = resume_df.columns.str.strip().str.lower()
 
 # --- Load Miscellaneous Parquet file ---
-misc_file = "miscelaneous.parquet"
+misc_file = st.file_uploader(
+    "Upload miscelaneous.parquet",
+    type=["parquet"],
+    key="misc"
+)
+
 misc_df = None
 
 if misc_file is not None:
@@ -1079,7 +1150,7 @@ if misc_file is not None:
                                 st.write("No segment codes for this project.")
             else:
                 st.info("Project or Segment Code columns not found in the data.")
-        
+
             
             # --- Pie Chart: % Complete ---
 # -------------------------------
@@ -1458,9 +1529,8 @@ if misc_file is not None:
                     df_bar = sub_df[sub_df['mapped'] == bar_value].copy()
                     df_bar = df_bar.loc[:, ~df_bar.columns.duplicated()]
                     if 'datetouse' in df_bar.columns:
-                        df_bar['datetouse_display'] = pd.to_datetime(
-                            df_bar['datetouse'], errors='coerce'
-                        ).dt.strftime("%d/%m/%Y")
+                        df_bar['datetouse_display'] = pd.to_datetime(df_bar['datetouse'], errors='coerce')
+                        df_bar['datetouse_display'] = df_bar['datetouse'].dt.strftime("%d/%m/%Y")
                         df_bar.loc[df_bar['datetouse'].isna(), 'datetouse_display'] = "Unplanned"
 
                     # 🔥 Rename columns BEFORE selecting
@@ -1475,50 +1545,72 @@ if misc_file is not None:
                 aggregated_df.to_excel(writer, sheet_name='Aggregated', index=False)
                 # Access the worksheet
                 ws = writer.book['Aggregated']
+                ws.insert_rows(1)
                 # ---- Header style ----
+                # ---- Formatting styles ----
                 header_font = Font(bold=True, size=16)
                 header_fill = PatternFill(start_color="00CCFF", end_color="00CCFF", fill_type="solid")
-                # ---- Border styles ----
                 thin_side = Side(style="thin")
                 medium_side = Side(style="medium")
                 thick_side = Side(style="thick")
-                for col_idx, cell in enumerate(ws[1], start=1):
-                    cell.font = header_font
-                    cell.fill = header_fill
-
-                    # Optional: auto-adjust column width
-                    column_letter = get_column_letter(col_idx)
-                    ws.column_dimensions[column_letter].width = 20
-
-                # ---- Alternating row colors ----
                 light_grey_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
                 white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
-                for row_idx in range(2, ws.max_row + 1):  # start after header
-                    fill = light_grey_fill if row_idx % 2 == 0 else white_fill
-                    for col_idx in range(1, ws.max_column + 1):
-                        ws.cell(row=row_idx, column=col_idx).fill = fill
+                # AFTER ✅
+                for sheet in [ws]:
+                    sheet.row_dimensions[1].height = 90   # logo row
 
-                max_col = ws.max_column
+                # ---- Load & resize images ----
+                IMG_HEIGHT = 120
+                IMG_WIDTH_SMALL = 120
+                IMG_WIDTH_LARGE = IMG_WIDTH_SMALL * 3  # 🔹 3× wider
 
-                for col_idx in range(1, max_col + 1):
-                    cell = ws.cell(row=1, column=col_idx)
+                img1 = XLImage("Images/GaeltecImage.png")
+                img2 = XLImage("Images/SPEN.png")
 
-                    cell.border = Border(
-                        left=thick_side if col_idx == 1 else medium_side,
-                        right=thick_side if col_idx == max_col else medium_side,
-                        top=thick_side,
-                        bottom=thick_side
-                    )
+                img1.width = IMG_WIDTH_SMALL
+                img1.height = IMG_HEIGHT
 
-                for row_idx in range(2, ws.max_row + 1):
-                    for col_idx in range(1, max_col + 1):
-                        cell = ws.cell(row=row_idx, column=col_idx)
+                img2.width = IMG_WIDTH_LARGE
+                img2.height = IMG_HEIGHT
 
+                # Position images (row 1)
+                img1.anchor = "B1"
+                img2.anchor = "A1"
+
+                ws.add_image(img1)
+                ws.add_image(img2)
+
+
+                # ---- Formatting (unchanged style) ----
+                for sheet in [ws]:
+                    max_col = sheet.max_column
+                    max_row = sheet.max_row
+
+                    # HEADER → ROW 2 ✅
+                    for col_idx, cell in enumerate(sheet[2], start=1):
+                        cell.font = header_font
+                        cell.fill = header_fill
+                        sheet.column_dimensions[get_column_letter(col_idx)].width = 60 if col_idx == 1 else 20
                         cell.border = Border(
-                            left=thin_side if col_idx == 1 else thin_side,
-                            right=thin_side
+                            left=thick_side if col_idx == 1 else medium_side,
+                            right=thick_side if col_idx == max_col else medium_side,
+                            top=thick_side,
+                            bottom=thick_side
                         )
+
+                    # DATA ROWS → START ROW 3 ✅
+                    for row_idx in range(3, max_row + 1):
+                        fill = light_grey_fill if row_idx % 2 == 1 else white_fill
+                        for col_idx in range(1, max_col + 1):
+                            cell = sheet.cell(row=row_idx, column=col_idx)
+                            cell.fill = fill
+                            cell.border = Border(
+                                left=thin_side,
+                                right=thin_side,
+                                top=thin_side,
+                                bottom=thin_side
+                            )
 
             buffer_agg.seek(0)
             st.download_button(
@@ -1566,10 +1658,10 @@ if misc_df is not None:
     # Data preparation
     # -----------------------------
     filtered_df['item'] = filtered_df['item'].astype(str)
-    misc_df['column_b'] = misc_df['column_b'].astype(str)
+    misc_df['column_1'] = misc_df['column_1'].astype(str)
 
     # Map items to work instructions
-    item_to_column_i = misc_df.set_index('column_b')['column_i'].to_dict()
+    item_to_column_i = misc_df.set_index('column_1')['column_2'].to_dict()
     poles_df = filtered_df[filtered_df['pole'].notna() & (filtered_df['pole'].astype(str).str.lower() != "nan")].copy()
     poles_df['Work instructions'] = poles_df['item'].map(item_to_column_i)
 
@@ -1645,6 +1737,203 @@ if misc_df is not None:
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
 
+general_summary = pd.DataFrame(
+    columns=["Description", "Total Quantity", "Comment"]
+)
+
+
+
+if filtered_df is not None and not filtered_df.empty:
+    buffer_agg = BytesIO()
+
+    with pd.ExcelWriter(buffer_agg, engine="openpyxl") as writer:
+
+        # ---- Prepare export_df ----
+        export_df = filtered_df.copy()
+        export_df = export_df.rename(columns=column_rename_map)
+
+        if "done" in export_df.columns:
+            export_df["done"] = pd.to_datetime(export_df["done"], errors="coerce")
+            export_df["done_display"] = export_df["done"].dt.strftime("%d/%m/%Y")
+            export_df.loc[export_df["done"].isna(), "done"] = "Unplanned"
+
+        cols_to_include = [
+            "item","comment", "Quantity_original", "Quantity_used", "material_code",
+            "type", "pole", "Date","done_display", "District", "project",
+            "Project Manager", "Circuit", "Segment",
+            "team lider", "PID", "sourcefile"
+        ]
+        cols_to_include = [c for c in cols_to_include if c in export_df.columns]
+        export_df = export_df[cols_to_include]
+
+        # ---- Output sheet (start below images) ----
+        export_df.to_excel(writer, sheet_name="Output", index=False, startrow=1)
+        ws = writer.book["Output"]
+
+        # ---- Summary sheet ----
+        if "Quantity_used" in export_df.columns:
+            # Ensure numeric type
+            # Apply normalization
+            export_df["Quantity_used"] = pd.to_numeric(export_df["Quantity_used"], errors="coerce").fillna(0)
+            special_item = (
+                "Erect 11kV Remote Controlled Switch Disconnector (Soule Auguste) or Auto Reclosure unit c/w VT, Aerial, RTU & umbilical cable."
+            )
+            export_df["item_norm"] = export_df["item"].apply(normalize_item)
+            summary_items_norm = [normalize_item(i) for i in summary_items]
+            special_item_norm = normalize_item(special_item)
+                # Add comments column for the special item
+            # Aggregate sum by item
+            summary_df = (
+                export_df[export_df["item_norm"].isin(summary_items_norm)]
+                .groupby("item_norm", as_index=False)["Quantity_used"]
+                .sum()
+            )
+
+            if not summary_df.empty:
+                general_summary = (summary_df.merge(export_df[["item_norm", "item"]],on="item_norm",how="left").drop_duplicates("item_norm")
+                                   .rename(columns={"item": "Description","Quantity_used": "Total Quantity"})[["Description", "Total Quantity"]])
+
+                # Ensure Comment column exists
+                general_summary["Comment"] = ""
+
+            # Extract all rows for the special item
+            special_df = export_df[export_df["item_norm"].str.contains(special_item_norm, na=False)].copy()
+
+            if not special_df.empty:
+                # Group by unique comment and sum quantities
+                special_summary = (
+                    special_df.groupby(["item", "comment"], as_index=False)["Quantity_used"]
+                    .sum()
+                    .rename(columns={"item": "Description", "Quantity_used": "Total Quantity", "comment": "Comment"})
+                    )
+
+                # --- Normalise comment safely ---
+                special_df["comment_clean"] = (
+                special_df["comment"]
+                .fillna("")
+                .str.lower()
+                .str.strip()
+                )
+                # --- Classify manufacturer ---
+                def classify_switch(comment):
+                    if not isinstance(comment, str):
+                        return "Unknown"
+                    comment = comment.lower()
+                    if re.search(r"\bsoule\b", comment):
+                        return "Soule"
+                    elif re.search(r"\bnoja\b", comment):
+                        return "Noja"
+                    else:
+                        return "Unknown"
+
+                special_df["Manufacturer"] = special_df["comment_clean"].apply(classify_switch)
+
+                # --- Aggregate ---
+                special_summary = (special_df.groupby(["item", "Manufacturer"], as_index=False)["Quantity_used"]
+                                   .sum().rename(columns={"item": "Description","Quantity_used": "Total Quantity","Manufacturer": "Comment",}))
+
+            else:
+                special_summary = pd.DataFrame(columns=["Description", "Total Quantity", "Comment"])
+
+            # Append special item summary (multiple rows per comment)
+            final_summary = pd.concat([general_summary, special_summary], ignore_index=True, sort=False)
+
+            # Write summary sheet
+            final_summary.to_excel(writer, sheet_name="Summary", index=False, startrow=1)
+            ws_summary = writer.book["Summary"]
+
+        # ---- Formatting styles ----
+        header_font = Font(bold=True, size=16)
+        header_fill = PatternFill(start_color="00CCFF", end_color="00CCFF", fill_type="solid")
+        thin_side = Side(style="thin")
+        medium_side = Side(style="medium")
+        thick_side = Side(style="thick")
+        light_grey_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+        white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+
+        # AFTER ✅
+        for sheet in [ws, ws_summary]:
+            sheet.row_dimensions[1].height = 90   # logo row
+
+        # ---- Load & resize images ----
+        IMG_HEIGHT = 120
+        IMG_WIDTH_SMALL = 120
+        IMG_WIDTH_LARGE = IMG_WIDTH_SMALL * 3  # 🔹 3× wider
+
+        img1 = XLImage("Images/GaeltecImage.png")
+        img2 = XLImage("Images/SPEN.png")
+
+        img1.width = IMG_WIDTH_SMALL
+        img1.height = IMG_HEIGHT
+
+        img2.width = IMG_WIDTH_LARGE
+        img2.height = IMG_HEIGHT
+
+        # Position images (row 1)
+        img1.anchor = "B1"
+        img2.anchor = "A1"
+
+        ws.add_image(img1)
+        ws.add_image(img2)
+
+        # Same for Summary
+        img1_s = XLImage("Images/GaeltecImage.png")
+        img2_s = XLImage("Images/SPEN.png")
+
+        img1_s.width = IMG_WIDTH_SMALL
+        img1_s.height = IMG_HEIGHT
+        img1_s.anchor = "A1"
+
+        img2_s.width = IMG_WIDTH_LARGE
+        img2_s.height = IMG_HEIGHT
+        img2_s.anchor = "B1"
+
+        ws_summary.add_image(img1_s)
+        ws_summary.add_image(img2_s)
+
+
+        # ---- Formatting (unchanged style) ----
+        for sheet in [ws, ws_summary]:
+            max_col = sheet.max_column
+            max_row = sheet.max_row
+
+            # HEADER → ROW 2 ✅
+            for col_idx, cell in enumerate(sheet[2], start=1):
+                cell.font = header_font
+                cell.fill = header_fill
+                sheet.column_dimensions[get_column_letter(col_idx)].width = 60 if col_idx == 1 else 20
+                cell.border = Border(
+                    left=thick_side if col_idx == 1 else medium_side,
+                    right=thick_side if col_idx == max_col else medium_side,
+                    top=thick_side,
+                    bottom=thick_side
+                )
+
+            # DATA ROWS → START ROW 3 ✅
+            for row_idx in range(3, max_row + 1):
+                fill = light_grey_fill if row_idx % 2 == 1 else white_fill
+                for col_idx in range(1, max_col + 1):
+                    cell = sheet.cell(row=row_idx, column=col_idx)
+                    cell.fill = fill
+                    cell.border = Border(
+                        left=thin_side,
+                        right=thin_side,
+                        top=thin_side,
+                        bottom=thin_side
+                    )
+
+    # ---- Download button ----
+    buffer_agg.seek(0)
+    st.download_button(
+        label="📥 Download Excel (Output Details)",
+        data=buffer_agg,
+        file_name="Gaeltec_Output.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+else:
+    st.info("Project or Segment Code columns not found in the data.")
+
 # -----------------------------
 # 📈 Jobs per Team per Day (Segment + Pole aware)
 # -----------------------------
@@ -1670,6 +1959,11 @@ if agg_view is not None and 'total' in agg_view.columns:
         filtered_agg['datetouse_dt'] = pd.to_datetime(filtered_agg['datetouse'], errors='coerce')
     else:
         filtered_agg['datetouse_dt'] = pd.to_datetime(filtered_agg['datetouse_dt'], errors='coerce')
+
+    # Ignore dates later than 2023
+    filtered_agg = filtered_agg[
+        filtered_agg['datetouse_dt'].dt.year > 2023
+    ]
 
     # Ensure 'total' is numeric
     filtered_agg['total'] = pd.to_numeric(filtered_agg['total'], errors='coerce').fillna(0)
