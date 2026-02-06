@@ -1002,6 +1002,12 @@ if "All" not in selected_teams and 'team_name' in filtered_df.columns:
         filtered_df['team_name'].astype(str).isin(selected_teams)
     ]
 
+if selected_pole != "All" and 'pole' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['pole'].astype(str) == selected_pole]
+
+if "All" not in selected_teams and 'team_name' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['team_name'].astype(str).isin(selected_teams)]
+
     # -------------------------------
     # --- Total & Variation Display ---
     # -------------------------------
