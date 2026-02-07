@@ -229,7 +229,39 @@ def apply_common_filters(df):
         df['total'] = pd.to_numeric(df['total'], errors='coerce')
 
     return df.dropna(subset=['datetouse_dt'])
+    
+def prepare_dataframe(df):
+    df = df.copy()
+    df.columns = df.columns.str.strip().str.lower()
 
+    if 'datetouse' in df.columns:
+        df['datetouse_dt'] = pd.to_datetime(df['datetouse'], errors='coerce').dt.normalize()
+    else:
+        df['datetouse_dt'] = pd.NaT
+
+    # Make numeric columns safe
+    for col in ['total', 'orig']:
+        if col in df.columns:
+            df[col] = (
+                df[col].astype(str)
+                .str.replace(" ", "")
+                .str.replace(",", ".", regex=False)
+                .astype(float)
+            )
+
+    return df
+
+def multi_select_filter(col, label, df):
+    if col not in df.columns:
+        return ["All"], df
+
+    options = ["All"] + sorted(df[col].dropna().astype(str).unique())
+    selected = st.sidebar.multiselect(label, options, default=["All"])
+
+    if "All" in selected:
+        return selected, df
+
+    return selected, df[df[col].astype(str).isin(selected)]
     
 # --- MAPPINGS ---
 
@@ -935,216 +967,199 @@ if misc_file is not None:
     except Exception as e:
         st.warning(f"Could not load Miscellaneous parquet: {e}")
 
-    # -------------------------------
-    # --- Sidebar Filters ---
-    # -------------------------------
-    st.sidebar.header("Filter Options")
+# -------------------------------
+# --- Sidebar Filters ---
+# -------------------------------
+st.sidebar.header("Filter Options")
 
-    def multi_select_filter(col_name, label, df, parent_filter=None):
-        """Helper for multiselect filter, handles 'All' selection."""
-        if col_name not in df.columns:
-            return ["All"], df
-        temp_df = df.copy()
-        if parent_filter is not None and "All" not in parent_filter[1]:
-            temp_df = temp_df[temp_df[parent_filter[0]].isin(parent_filter[1])]
-        options = ["All"] + sorted(temp_df[col_name].dropna().unique())
-        selected = st.sidebar.multiselect(label, options, default=["All"])
-        if "All" not in selected:
-            temp_df = temp_df[temp_df[col_name].isin(selected)]
-        return selected, temp_df
+selected_shire, filtered_df = multi_select_filter('shire', "Select Shire", df)
+selected_project, filtered_df = multi_select_filter('project', "Select Project", filtered_df,
+                                                    parent_filter=('shire', selected_shire))
+selected_pm, filtered_df = multi_select_filter('projectmanager', "Select Project Manager", filtered_df,
+                                               parent_filter=('shire', selected_shire))
+selected_segment, filtered_df = multi_select_filter('segmentcode', "Select Segment Code", filtered_df)
+selected_type, filtered_df = multi_select_filter('type', "Select Type", filtered_df)
+selected_teams, filtered_df = multi_select_filter('team_name', "Select Teams", filtered_df)
+selected_pole = st.sidebar.selectbox("Select Pole", ["All"] + sorted(filtered_df['pole'].dropna().astype(str).unique()))
 
-    selected_shire, filtered_df = multi_select_filter('shire', "Select Shire", df)
-    selected_project, filtered_df = multi_select_filter('project', "Select Project", filtered_df,
-                                                        parent_filter=('shire', selected_shire))
-    selected_pm, filtered_df = multi_select_filter('projectmanager', "Select Project Manager", filtered_df,
-                                                   parent_filter=('shire', selected_shire))
-    selected_segment, filtered_df = multi_select_filter('segmentcode', "Select Segment Code", filtered_df)
-    selected_type, filtered_df = multi_select_filter('type', "Select Type", filtered_df)
-    selected_teams, filtered_df = multi_select_filter('team_name', "Select Teams", filtered_df)
-    selected_pole = st.sidebar.selectbox("Select Pole", ["All"] + sorted(filtered_df['pole'].dropna().astype(str).unique()))
-
-    # -------------------------------
-    # --- Date Filter ---
-    # -------------------------------
-    filter_type = st.sidebar.selectbox("Filter by Date", ["Single Day", "Week", "Month", "Year", "Custom Range", "Unplanned"])
-    date_range_str = ""
-    if 'datetouse' in filtered_df.columns:
-        if filter_type == "Single Day":
-            date_selected = st.sidebar.date_input("Select date")
-            filtered_df = filtered_df[filtered_df['datetouse'] == pd.Timestamp(date_selected)]
-            date_range_str = str(date_selected)
-        elif filter_type == "Week":
-            week_start = st.sidebar.date_input("Week start date")
-            week_end = week_start + pd.Timedelta(days=6)
-            filtered_df = filtered_df[(filtered_df['datetouse'] >= pd.Timestamp(week_start)) &
-                                      (filtered_df['datetouse'] <= pd.Timestamp(week_end))]
-            date_range_str = f"{week_start} to {week_end}"
-        elif filter_type == "Month":
-            month_selected = st.sidebar.date_input("Pick any date in month")
-            filtered_df = filtered_df[(filtered_df['datetouse'].dt.month == month_selected.month) &
-                                      (filtered_df['datetouse'].dt.year == month_selected.year)]
-            date_range_str = month_selected.strftime("%B %Y")
-        elif filter_type == "Year":
-            year_selected = st.sidebar.number_input("Select year", min_value=2000, max_value=2100, value=2025)
-            filtered_df = filtered_df[filtered_df['datetouse'].dt.year == year_selected]
-            date_range_str = str(year_selected)
-        elif filter_type == "Custom Range":
-            start_date = st.sidebar.date_input("Start date")
-            end_date = st.sidebar.date_input("End date")
-            filtered_df = filtered_df[(filtered_df['datetouse'] >= pd.Timestamp(start_date)) &
-                                      (filtered_df['datetouse'] <= pd.Timestamp(end_date))]
-            date_range_str = f"{start_date} to {end_date}"
-        elif filter_type == "Unplanned":
-            filtered_df = filtered_df[filtered_df['datetouse'].isna()]
-            date_range_str = "Unplanned"
-
-
-if "All" not in selected_teams and 'team_name' in filtered_df.columns:
-    filtered_df = filtered_df[
-        filtered_df['team_name'].astype(str).isin(selected_teams)
-    ]
-
-if selected_pole != "All" and 'pole' in filtered_df.columns:
+if selected_pole != "All":
     filtered_df = filtered_df[filtered_df['pole'].astype(str) == selected_pole]
+
+# -------------------------------
+# --- Date Filter ---
+# -------------------------------
+filter_type = st.sidebar.selectbox("Filter by Date", ["Single Day", "Week", "Month", "Year", "Custom Range", "Unplanned"])
+date_range_str = ""
+if 'datetouse' in filtered_df.columns:
+    if filter_type == "Single Day":
+        date_selected = st.sidebar.date_input("Select date")
+        filtered_df = filtered_df[filtered_df['datetouse'] == pd.Timestamp(date_selected)]
+        date_range_str = str(date_selected)
+    elif filter_type == "Week":
+        week_start = st.sidebar.date_input("Week start date")
+        week_end = week_start + pd.Timedelta(days=6)
+        filtered_df = filtered_df[(filtered_df['datetouse'] >= pd.Timestamp(week_start)) &
+                                  (filtered_df['datetouse'] <= pd.Timestamp(week_end))]
+        date_range_str = f"{week_start} to {week_end}"
+    elif filter_type == "Month":
+        month_selected = st.sidebar.date_input("Pick any date in month")
+        filtered_df = filtered_df[(filtered_df['datetouse'].dt.month == month_selected.month) &
+                                  (filtered_df['datetouse'].dt.year == month_selected.year)]
+        date_range_str = month_selected.strftime("%B %Y")
+    elif filter_type == "Year":
+        year_selected = st.sidebar.number_input("Select year", min_value=2000, max_value=2100, value=2025)
+        filtered_df = filtered_df[filtered_df['datetouse'].dt.year == year_selected]
+        date_range_str = str(year_selected)
+    elif filter_type == "Custom Range":
+        start_date = st.sidebar.date_input("Start date")
+        end_date = st.sidebar.date_input("End date")
+        filtered_df = filtered_df[(filtered_df['datetouse'] >= pd.Timestamp(start_date)) &
+                                  (filtered_df['datetouse'] <= pd.Timestamp(end_date))]
+        date_range_str = f"{start_date} to {end_date}"
+    elif filter_type == "Unplanned":
+        filtered_df = filtered_df[filtered_df['datetouse'].isna()]
+        date_range_str = "Unplanned"
 
 if "All" not in selected_teams and 'team_name' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['team_name'].astype(str).isin(selected_teams)]
 
-    # -------------------------------
-    # --- Total & Variation Display ---
-    # -------------------------------
-    total_sum, variation_sum = 0, 0
-    if 'total' in filtered_df.columns:
-        total_series = pd.to_numeric(filtered_df['total'].astype(str).str.replace(" ", "").str.replace(",", ".", regex=False),
-                                     errors='coerce')
-        total_sum = total_series.sum(skipna=True)
-        if 'orig' in filtered_df.columns:
-            orig_series = pd.to_numeric(filtered_df['orig'].astype(str).str.replace(" ", "").str.replace(",", ".", regex=False),
-                                        errors='coerce')
-            variation_sum = (total_series - orig_series).sum(skipna=True)
+if selected_pole != "All" and 'pole' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['pole'].astype(str) == selected_pole]
 
-    formatted_total = f"{total_sum:,.2f}".replace(",", " ").replace(".", ",")
-    formatted_variation = f"{variation_sum:,.2f}".replace(",", " ").replace(".", ",")
+# -------------------------------
+# --- Total & Variation Display ---
+# -------------------------------
+total_sum, variation_sum = 0, 0
+if 'total' in filtered_df.columns:
+    total_series = pd.to_numeric(filtered_df['total'].astype(str).str.replace(" ", "").str.replace(",", ".", regex=False),
+                                 errors='coerce')
+    total_sum = total_series.sum(skipna=True)
+    if 'orig' in filtered_df.columns:
+        orig_series = pd.to_numeric(filtered_df['orig'].astype(str).str.replace(" ", "").str.replace(",", ".", regex=False),
+                                    errors='coerce')
+        variation_sum = (total_series - orig_series).sum(skipna=True)
 
-    # Money logo
-    money_logo_path = r"Images/Pound.png"
-    money_logo = Image.open(money_logo_path).resize((40, 40))
-    buffered = BytesIO()
-    money_logo.save(buffered, format="PNG")
-    money_logo_base64 = base64.b64encode(buffered.getvalue()).decode()
+formatted_total = f"{total_sum:,.2f}".replace(",", " ").replace(".", ",")
+formatted_variation = f"{variation_sum:,.2f}".replace(",", " ").replace(".", ",")
 
-    # Display Total & Variation (Centered)
-    st.markdown("<h2>Financial</h2>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center; color:white;'>Revenue</h3>", unsafe_allow_html=True)
-    try:
-        st.markdown(
-            f"""
-            <div style='display:flex; justify-content:center;'>
-                <div style='display:flex; flex-direction:column; gap:4px;'>
-                    <div style='display:flex; align-items:center; gap:10px;'>
-                        <h2 style='color:#32CD32; margin:0; font-size:36px;'><b>Total:</b> {formatted_total}</h2>
-                        <img src='data:image/png;base64,{money_logo_base64}' width='40' height='40'/>
-                    </div>
-                    <div style='display:flex; align-items:center; gap:8px;'>
-                        <h2 style='color:#32CD32; font-size:25px; margin:0;'><b>Variation:</b> {formatted_variation}</h2>
-                        <img src='data:image/png;base64,{money_logo_base64}' width='28' height='28'/>
-                    </div>
-                    <p style='text-align:center; font-size:14px; margin-top:4px;'>
-                        ({date_range_str}, Shires: {selected_shire}, Projects: {selected_project}, PMs: {selected_pm})
-                    </p>
+# Money logo
+money_logo_path = r"Images/Pound.png"
+money_logo = Image.open(money_logo_path).resize((40, 40))
+buffered = BytesIO()
+money_logo.save(buffered, format="PNG")
+money_logo_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+# Display Total & Variation (Centered)
+st.markdown("<h2>Financial</h2>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align:center; color:white;'>Revenue</h3>", unsafe_allow_html=True)
+try:
+    st.markdown(
+        f"""
+        <div style='display:flex; justify-content:center;'>
+            <div style='display:flex; flex-direction:column; gap:4px;'>
+                <div style='display:flex; align-items:center; gap:10px;'>
+                    <h2 style='color:#32CD32; margin:0; font-size:36px;'><b>Total:</b> {formatted_total}</h2>
+                    <img src='data:image/png;base64,{money_logo_base64}' width='40' height='40'/>
                 </div>
+                <div style='display:flex; align-items:center; gap:8px;'>
+                    <h2 style='color:#32CD32; font-size:25px; margin:0;'><b>Variation:</b> {formatted_variation}</h2>
+                    <img src='data:image/png;base64,{money_logo_base64}' width='28' height='28'/>
+                </div>
+                <p style='text-align:center; font-size:14px; margin-top:4px;'>
+                    ({date_range_str}, Shires: {selected_shire}, Projects: {selected_project}, PMs: {selected_pm})
+                </p>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
-    except Exception as e:
-        st.warning(f"Could not display Total & Variation: {e}")
-    # -------------------------------
-    # --- Revenue Chart (Full Width) ---
-    # -------------------------------
-    st.markdown("<h3 style='text-align:center; color:white;'>Revenue</h3>", unsafe_allow_html=True)
-    try:
-        if 'filtered_df' in locals() and not filtered_df.empty and 'total' in filtered_df.columns:
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+except Exception as e:
+    st.warning(f"Could not display Total & Variation: {e}")
 
-            chart_df = filtered_df[filtered_df['datetouse_dt'].notna()].copy()
-            chart_df = chart_df[chart_df['datetouse_dt'] >= '2000-01-01']
-            chart_df['total'] = pd.to_numeric(chart_df['total'], errors='coerce')
-            chart_df = chart_df[chart_df['total'].notna()]
+# -------------------------------
+# --- Revenue Chart (Full Width) ---
+# -------------------------------
+st.markdown("<h3 style='text-align:center; color:white;'>Revenue</h3>", unsafe_allow_html=True)
+try:
+    if 'filtered_df' in locals() and not filtered_df.empty and 'total' in filtered_df.columns:
 
-            if not chart_df.empty:
-                revenue_by_date = chart_df.groupby('datetouse_dt')['total'].sum().reset_index()
-                revenue_by_date = revenue_by_date.sort_values('datetouse_dt')
-                revenue_by_date['total_formatted'] = revenue_by_date['total'].apply(
-                    lambda x: f"£{x:,.0f}" if x >= 1000 else f"€{x:.0f}"
-                )
+        chart_df = filtered_df[filtered_df['datetouse_dt'].notna()].copy()
+        chart_df = chart_df[chart_df['datetouse_dt'] >= '2000-01-01']
+        chart_df['total'] = pd.to_numeric(chart_df['total'], errors='coerce')
+        chart_df = chart_df[chart_df['total'].notna()]
 
-                fig_revenue = px.line(
-                    revenue_by_date,
-                    x='datetouse_dt',
-                    y='total',
-                    title="Daily Revenue",
-                    labels={'datetouse_dt': 'Date', 'total': 'Revenue (£)'}
-                )
-                fig_revenue.update_traces(
-                    mode='lines+markers',
-                    line=dict(width=3, color='#32CD32'),
-                    marker=dict(size=6, color='#32CD32'),
-                    hovertemplate='<b>Date: %{x}</b><br>Revenue: £%{y:,.0f}<extra></extra>'
-                )
-                fig_revenue.update_layout(
-                    height=600,  # taller chart
-                    xaxis=dict(
-                        tickformatstops=[
-                            dict(dtickrange=[None, 1000*60*60*24*30], value="%d %b %Y"),
-                            dict(dtickrange=[1000*60*60*24*30, None], value="%b %Y")
-                        ],
-                        tickangle=45,
-                        gridcolor='rgba(128,128,128,0.2)',
-                        rangeslider=dict(visible=True),
-                        type='date'
-                    ),
-                    yaxis=dict(
-                        title='Revenue (£)',
-                        tickformat=",.0f",
-                        gridcolor='rgba(128,128,128,0.2)',
-                        autorange=True,
-                        fixedrange=False  # <-- allow dynamic scaling on zoom
-                    ),
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white'),
-                    title_font_size=16,
-                    hovermode='x unified'
-                )
+        if not chart_df.empty:
+            revenue_by_date = chart_df.groupby('datetouse_dt')['total'].sum().reset_index()
+            revenue_by_date = revenue_by_date.sort_values('datetouse_dt')
+            revenue_by_date['total_formatted'] = revenue_by_date['total'].apply(
+                lambda x: f"£{x:,.0f}" if x >= 1000 else f"€{x:.0f}"
+            )
 
-                st.plotly_chart(fig_revenue, use_container_width=True)
-            else:
-                st.info("No projects with dates since 2000 for selected filters.")
+            fig_revenue = px.line(
+                revenue_by_date,
+                x='datetouse_dt',
+                y='total',
+                title="Daily Revenue",
+                labels={'datetouse_dt': 'Date', 'total': 'Revenue (£)'}
+            )
+            fig_revenue.update_traces(
+                mode='lines+markers',
+                line=dict(width=3, color='#32CD32'),
+                marker=dict(size=6, color='#32CD32'),
+                hovertemplate='<b>Date: %{x}</b><br>Revenue: £%{y:,.0f}<extra></extra>'
+            )
+            fig_revenue.update_layout(
+                height=600,  # taller chart
+                xaxis=dict(
+                    tickformatstops=[
+                        dict(dtickrange=[None, 1000*60*60*24*30], value="%d %b %Y"),
+                        dict(dtickrange=[1000*60*60*24*30, None], value="%b %Y")
+                    ],
+                    tickangle=45,
+                    gridcolor='rgba(128,128,128,0.2)',
+                    rangeslider=dict(visible=True),
+                    type='date'
+                ),
+                yaxis=dict(
+                    title='Revenue (£)',
+                    tickformat=",.0f",
+                    gridcolor='rgba(128,128,128,0.2)',
+                    autorange=True,
+                    fixedrange=False  # <-- allow dynamic scaling on zoom
+                ),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white'),
+                title_font_size=16,
+                hovermode='x unified'
+            )
+
+            st.plotly_chart(fig_revenue, use_container_width=True)
         else:
-            st.info("No data available for the selected filters.")
+            st.info("No projects with dates since 2000 for selected filters.")
+    else:
+        st.info("No data available for the selected filters.")
 
-    except Exception as e:
-        st.warning(f"Could not generate revenue chart: {e}")
+except Exception as e:
+    st.warning(f"Could not generate revenue chart: {e}")
                 
-    # -----------------------------
+# -----------------------------
 # 📈 Jobs per Team per Day (Segment + Pole aware)
 # -----------------------------
 st.subheader("📈 Jobs per Team per Day")
+
+time_df = (filtered_df.dropna(subset=['datetouse_dt', 'team_name']).groupby(['datetouse_dt', 'team_name'], as_index=False)['total'].sum())
 
 if agg_view is not None and 'total' in agg_view.columns:
     filtered_agg = agg_view.copy()
 
     # Apply segment filter
     if selected_segment != 'All' and 'segmentcode' in filtered_agg.columns:
-        filtered_agg = filtered_agg[
-            filtered_agg['segmentcode'].astype(str).str.strip() == str(selected_segment).strip()
-        ]
+        filtered_agg = filtered_agg[filtered_agg['segmentcode'].astype(str).str.strip() == str(selected_segment).strip()]
 
     # Apply pole filter
     if selected_pole != "All" and 'pole' in filtered_agg.columns:
-        filtered_agg = filtered_agg[
-            filtered_agg['pole'].astype(str).str.strip() == str(selected_pole).strip()
-        ]
+        filtered_agg = filtered_agg[filtered_agg['pole'].astype(str).str.strip() == str(selected_pole).strip()]
 
     # Ensure datetime column
     if 'datetouse_dt' not in filtered_agg.columns:
@@ -1152,10 +1167,8 @@ if agg_view is not None and 'total' in agg_view.columns:
     else:
         filtered_agg['datetouse_dt'] = pd.to_datetime(filtered_agg['datetouse_dt'], errors='coerce')
 
-    # Ignore dates later than 2023
-    filtered_agg = filtered_agg[
-        filtered_agg['datetouse_dt'].dt.year > 2023
-    ]
+        # Ignore dates later than 2023
+        filtered_agg = filtered_agg[filtered_agg['datetouse_dt'].dt.year > 2023]
 
     # Ensure 'total' is numeric
     filtered_agg['total'] = pd.to_numeric(filtered_agg['total'], errors='coerce').fillna(0)
@@ -1167,35 +1180,88 @@ if agg_view is not None and 'total' in agg_view.columns:
         # Aggregate per day per team
         time_df = filtered_agg.groupby(['datetouse_dt', 'team_name'], as_index=False)['total'].sum()
 
-        # Plot line chart
-        fig_time = px.line(
-            time_df,
-            x='datetouse_dt',
-            y='total',
-            color='team_name',
-            markers=True,
-            hover_data={'datetouse_dt': True, 'team_name': True, 'total': True}
-        )
-        fig_time.update_layout(
-            xaxis_title="Day",
-            yaxis_title="Total Jobs £",
-            xaxis=dict(
-                tickformat="%d/%m/%Y",
-                tickangle=45,
-                nticks=10,
-                tickmode='auto',
-            ),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            legend_title_text="Team",
-            height=500
-        )
-        st.plotly_chart(fig_time, use_container_width=True)
-    else:
-        st.info("No time-based data available for the selected filters.")
+    # Plot line chart
+    fig_time = px.line(
+        time_df,
+        x='datetouse_dt',
+        y='total',
+        color='team_name',
+        markers=True,
+        hover_data={'datetouse_dt': True, 'team_name': True, 'total': True}
+    )
+    fig_time.update_layout(
+        xaxis_title="Day",
+        yaxis_title="Total Jobs £",
+        xaxis=dict(
+            tickformat="%d/%m/%Y",
+            tickangle=45,
+            nticks=10,
+            tickmode='auto',
+        ),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        legend_title_text="Team",
+        height=500
+    )
+    st.plotly_chart(fig_time, use_container_width=True)
 else:
     st.info("No 'total' column found in aggregated data.")
 
+# Display Project and completion
+col_top_left, col_top_right = st.columns([1, 1])
+
+# Project Completion
+with col_top_left:
+    st.markdown("<h3 style='text-align:center; color:white;'>Projects Distribution</h3>", unsafe_allow_html=True)
+    # --- Top-right Pie Chart: Projects Distribution ---
+    try:
+        if 'filtered_df' in locals() and not filtered_df.empty and 'project' in filtered_df.columns:
+            
+            # Count projects and get top projects
+            project_counts = filtered_df['project'].value_counts().reset_index()
+            project_counts.columns = ['Project', 'total']
+            
+            # If too many projects, group smaller ones into "Other"
+            if len(project_counts) > 8:
+                top_projects = project_counts.head(7)
+                other_count = project_counts['total'].iloc[7:].sum()
+                other_row = pd.DataFrame({'Project': ['Other'], 'total': [other_count]})
+                project_data = pd.concat([top_projects, other_row], ignore_index=True)
+            else:
+                project_data = project_counts
+            
+            # Create pie chart
+            fig_projects = px.pie(
+                project_data,
+                names='Project',
+                values='total',
+                title="",
+                hole=0.4
+            )
+            fig_projects.update_traces(
+                textinfo='percent+label',
+                textfont_size=14,
+                marker=dict(line=dict(color='#000000', width=1))
+            )
+            fig_projects.update_layout(
+                title_text="",
+                title_font_size=16,
+                font=dict(color='white'),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                showlegend=False,
+                annotations=[dict(text=f'Total<br>{len(filtered_df)}', x=0.5, y=0.5, font_size=16, showarrow=False)]
+            )
+            
+            st.plotly_chart(fig_projects, use_container_width=True)
+            
+        else:
+            st.info("No project data available for the selected filters.")
+            
+    except Exception as e:
+        st.warning(f"Could not generate projects pie chart: {e}")
+
+    
     # Display Project and completion
     col_top_left, col_top_right = st.columns([1, 1])
     # Project Completion
