@@ -287,7 +287,7 @@ def to_excel(project_df, team_df):
     output.seek(0)
     return output
 
-def generate_excel_styled(filtered_df, poles_df=None):
+def generate_excel_styled_multilevel(filtered_df, poles_df=None):
     wb = Workbook()
     ws = wb.active
     ws.title = "Daily Revenue"
@@ -306,8 +306,12 @@ def generate_excel_styled(filtered_df, poles_df=None):
             'projectmanager':'Project Manager'
         }, inplace=True)
 
-        # Write data to sheet
-        for r_idx, row in enumerate([daily_df.columns.tolist()] + daily_df.values.tolist(), start=1):
+        # Write header in ROW 2 (row 1 reserved for images)
+        for col_idx, col_name in enumerate(daily_df.columns.tolist(), start=1):
+            ws.cell(row=2, column=col_idx, value=col_name)
+
+        # Write data starting from row 3
+        for r_idx, row in enumerate(daily_df.values.tolist(), start=3):
             for c_idx, value in enumerate(row, start=1):
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -315,15 +319,22 @@ def generate_excel_styled(filtered_df, poles_df=None):
     ws_summary = wb.create_sheet(title="Poles Summary")
     if poles_df is not None and not poles_df.empty:
         poles_summary = (
-            poles_df[['project', 'segmentcode', 'pole']]
+            poles_df[['shire','project','segmentcode','pole']]
             .drop_duplicates()
-            .groupby(['project','segmentcode'], as_index=False)
+            .groupby(['shire','project','segmentcode'], as_index=False)
             .agg({'pole': lambda x: ', '.join(sorted(x.astype(str)))})
         )
-        poles_summary.rename(columns={'project':'Project','segmentcode':'Segment','pole':'Poles'}, inplace=True)
+        poles_summary.rename(columns={'pole':'Poles', 'segmentcode':'Segment'}, inplace=True)
 
-        # Write data to sheet
-        for r_idx, row in enumerate([poles_summary.columns.tolist()] + poles_summary.values.tolist(), start=1):
+        # Write multi-level headers (Row 2-4)
+        headers = ['Shire','Project','Segment','Poles']
+        for idx, h in enumerate(headers, start=1):
+            ws_summary.cell(row=2, column=idx, value=h)  # Shire header
+            ws_summary.cell(row=3, column=idx, value=h if h != 'Poles' else '')  # Project header
+            ws_summary.cell(row=4, column=idx, value=h if h != 'Poles' else '')  # Segment header
+
+        # Write data starting from row 5
+        for r_idx, row in enumerate(poles_summary.values.tolist(), start=5):
             for c_idx, value in enumerate(row, start=1):
                 ws_summary.cell(row=r_idx, column=c_idx, value=value)
 
@@ -336,7 +347,7 @@ def generate_excel_styled(filtered_df, poles_df=None):
     light_grey_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
     white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
-    # Add images
+    # ---- Add images ----
     IMG_HEIGHT = 120
     IMG_WIDTH_SMALL = 120
     IMG_WIDTH_LARGE = IMG_WIDTH_SMALL * 3
@@ -357,25 +368,28 @@ def generate_excel_styled(filtered_df, poles_df=None):
     ws_summary.add_image(img1_s)
     ws_summary.add_image(img2_s)
 
-    # ---- Apply header and row formatting ----
+    # ---- Apply formatting ----
     for sheet in [ws, ws_summary]:
         max_col = sheet.max_column
         max_row = sheet.max_row
 
-        # HEADER → ROW 2 (row 1 is for images)
-        for col_idx, cell in enumerate(sheet[2], start=1):
-            cell.font = header_font
-            cell.fill = header_fill
-            sheet.column_dimensions[get_column_letter(col_idx)].width = 60 if col_idx == 1 else 20
-            cell.border = Border(
-                left=thick_side if col_idx == 1 else medium_side,
-                right=thick_side if col_idx == max_col else medium_side,
-                top=thick_side,
-                bottom=thick_side
-            )
+        # Header rows
+        for row_idx in range(2, 5 if sheet == ws_summary else 3):
+            for col_idx in range(1, max_col + 1):
+                cell = sheet.cell(row=row_idx, column=col_idx)
+                cell.font = header_font
+                cell.fill = header_fill
+                sheet.column_dimensions[get_column_letter(col_idx)].width = 60 if col_idx == 1 else 20
+                cell.border = Border(
+                    left=thick_side if col_idx == 1 else medium_side,
+                    right=thick_side if col_idx == max_col else medium_side,
+                    top=thick_side,
+                    bottom=thick_side
+                )
 
-        # DATA ROWS → START ROW 3
-        for row_idx in range(3, max_row + 1):
+        # DATA ROWS → after headers
+        start_data_row = 5 if sheet == ws_summary else 3
+        for row_idx in range(start_data_row, max_row + 1):
             fill = light_grey_fill if row_idx % 2 == 1 else white_fill
             for col_idx in range(1, max_col + 1):
                 cell = sheet.cell(row=row_idx, column=col_idx)
@@ -1282,8 +1296,6 @@ if {'datetouse_dt', 'team_name', 'total'}.issubset(filtered_df.columns):
     else:
         revenue_per_project = pd.DataFrame()
     
-
-
     if not filtered_df.empty and 'team_name' in filtered_df.columns and 'total' in filtered_df.columns:
         revenue_per_team = (
             filtered_df
@@ -1397,12 +1409,17 @@ if {'datetouse_dt', 'team_name', 'total'}.issubset(filtered_df.columns):
     # -----------------------------
     # Streamlit download button
     # -----------------------------
+
+# ---- Streamlit download button ----
     if 'filtered_df' in locals() and not filtered_df.empty:
-        excel_file = generate_excel_styled(filtered_df, poles_df if 'poles_df' in locals() else None)
+       excel_file = generate_excel_styled_multilevel(
+            filtered_df,
+            poles_df if 'poles_df' in locals() else None
+        )
         st.download_button(
-            label="📥 Download Styled Revenue & Poles Excel",
-            data=excel_file,
-            file_name=f"Revenue_Poles_Styled_{date_range_str}.xlsx",
+            label="📥 High level planning & Poles Excel",
+           data=excel_file,
+            file_name=f"High level planning_{date_range_str}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
