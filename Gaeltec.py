@@ -1285,7 +1285,7 @@ if {'datetouse_dt', 'team_name', 'total'}.issubset(filtered_df.columns):
     # -----------------------------
     #  Map items to Work Instru
     # -----------------------------
-    if misc_df is not None:
+    if 'misc_df' in locals() and not misc_df.empty:
         filtered_df['item'] = filtered_df['item'].astype(str)
         misc_df['column_1'] = misc_df['column_1'].astype(str)
 
