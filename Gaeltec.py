@@ -1393,20 +1393,31 @@ if not filtered_df.empty:
         mode='lines+markers'  # show points and dashed lines
     )
 
+    # Layout updates for gridlines and axis
     fig.update_layout(
         height=500,
         xaxis_title="Date",
         yaxis_title="Revenue (£)",
         hovermode="x unified",
-        plot_bgcolor='rgba(0,0,0,0)',  # transparent background for dark mode
+        plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='white')  # white text for dark mode
+        font=dict(color='white'),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(255,255,255,0.1)',
+            tickmode='linear',
+            dtick=max(1, len(revenue_df)//10)  # roughly double X ticks
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(255,255,255,0.2)',  # subtle horizontal lines
+            zeroline=False
+        )
     )
 
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.info("No data for selected filters.")
-
 
 if filtered_df is not None and not filtered_df.empty:
     buffer_agg = BytesIO()
