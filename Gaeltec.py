@@ -265,18 +265,23 @@ def multi_select_filter(col, label, df):
 
 
 
-def to_excel(rev_project_df):
+def to_excel(project_df, team_df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        if not rev_project_df.empty:
-            rev_project_df.to_excel(
-                writer,
-                index=False,
-                sheet_name="Revenue per Project"
-            )
+
+        # Sheet 1: Revenue per Project
+        if not project_df.empty:
+            project_df.to_excel(writer, index=False, sheet_name="Revenue per Project")
             ws_proj = writer.sheets["Revenue per Project"]
             ws_proj.column_dimensions["A"].width = 30
             ws_proj.column_dimensions["B"].width = 18
+
+        # Sheet 2: Revenue per Team
+        if not team_df.empty:
+            team_df.to_excel(writer, index=False, sheet_name="Revenue per Team")
+            ws_team = writer.sheets["Revenue per Team"]
+            ws_team.column_dimensions["A"].width = 25
+            ws_team.column_dimensions["B"].width = 18
 
     output.seek(0)
     return output
