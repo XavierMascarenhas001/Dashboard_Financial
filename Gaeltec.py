@@ -910,11 +910,6 @@ master_file = st.file_uploader(
     type=["parquet"],
     key="master"
 )
-aggregated_file = st.file_uploader(
-    "Upload Master.parquet",
-    type=["parquet"],
-    key="master_file"
-)
 
 resume_file = st.file_uploader(
     "Upload CF_resume.parquet",
