@@ -352,6 +352,10 @@ def generate_excel_styled_multilevel(filtered_df, poles_df=None):
     IMG_WIDTH_SMALL = 120
     IMG_WIDTH_LARGE = IMG_WIDTH_SMALL * 3
 
+    # Set row 1 height to fit images
+    ws.row_dimensions[1].height = IMG_HEIGHT * 0.75  # approximate pixels → Excel points
+    ws_summary.row_dimensions[1].height = IMG_HEIGHT * 0.75
+
     # Position images (row 1)
     img1.anchor = "B1"
     img2.anchor = "A1"
