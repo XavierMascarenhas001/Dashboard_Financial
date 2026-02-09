@@ -1378,22 +1378,22 @@ if not filtered_df.empty:
         .sort_values('datetouse_dt')
     )
 
-    # Scatter plot with dashed lines
+    # Reduce points by taking every 2nd date (or every nth)
+    revenue_df_sampled = revenue_df.iloc[::2, :]
+
     fig = px.scatter(
-        revenue_df,
+        revenue_df_sampled,
         x='datetouse_dt',
         y='total',
         title="Revenue Over Time"
     )
 
-    # Update marker and line style
     fig.update_traces(
-        marker=dict(size=12, color='#FFA500'),  # orange points
-        line=dict(dash='dash', color='#FFA500'),  # dashed connecting lines
-        mode='lines+markers'  # show points and dashed lines
+        marker=dict(size=10, color='#FFA500'),
+        line=dict(dash='dash', color='#FFA500'),
+        mode='lines+markers'
     )
 
-    # Layout updates for gridlines and axis
     fig.update_layout(
         height=500,
         xaxis_title="Date",
@@ -1402,17 +1402,8 @@ if not filtered_df.empty:
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         font=dict(color='white'),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor='rgba(255,255,255,0.1)',
-            tickmode='linear',
-            dtick=max(1, len(revenue_df)//10)  # roughly double X ticks
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor='rgba(255,255,255,0.2)',  # subtle horizontal lines
-            zeroline=False
-        )
+        xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.2)', zeroline=False)
     )
 
     st.plotly_chart(fig, use_container_width=True)
