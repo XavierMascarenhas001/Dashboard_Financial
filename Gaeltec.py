@@ -262,6 +262,21 @@ def multi_select_filter(col, label, df):
         return selected, df
 
     return selected, df[df[col].astype(str).isin(selected)]
+
+def to_excel(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name="Revenue per Project")
+
+        workbook = writer.book
+        worksheet = writer.sheets["Revenue per Project"]
+
+        money_fmt = workbook.add_format({'num_format': '£#,##0.00'})
+        worksheet.set_column('A:A', 30)
+        worksheet.set_column('B:B', 18, money_fmt)
+
+    output.seek(0)
+    return output
     
 # --- MAPPINGS ---
 
@@ -1119,6 +1134,36 @@ if {'datetouse_dt', 'team_name', 'total'}.issubset(filtered_df.columns):
     )
     st.plotly_chart(fig_team, use_container_width=True)
 
+
+    # -------------------------------
+    # Revenue per Project (Excel Export)
+    # -------------------------------
+    if not filtered_df.empty and 'project' in filtered_df.columns and 'total' in filtered_df.columns:
+        revenue_per_project = (
+            filtered_df
+            .groupby('project', as_index=False)['total']
+            .sum()
+            .sort_values('total', ascending=False)
+       )
+
+        revenue_per_project.rename(
+            columns={'total': 'Revenue (£)'},
+            inplace=True
+        )
+    else:
+        revenue_per_project = pd.DataFrame()
+
+    if not revenue_per_project.empty:
+        excel_file = to_excel(revenue_per_project)
+
+        st.download_button(
+            label="📥 Download Revenue per Project (Excel)",
+            data=excel_file,
+            file_name=f"revenue_per_project_{date_range_str}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    else:
+        st.info("No project revenue data available for export.")
     
     # Display Project and completion
     col_top_left, col_top_right = st.columns([1, 1])
