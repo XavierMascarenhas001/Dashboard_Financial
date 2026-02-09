@@ -1369,23 +1369,32 @@ else:
 general_summary = pd.DataFrame(
     columns=["Description", "Total Quantity", "Comment"]
 )
-if not filtered_df.empty:
+if not filtered_df.empty and 'datetouse_dt' in filtered_df.columns and 'total' in filtered_df.columns:
+    # Aggregate revenue per date
+    revenue_df = (
+        filtered_df
+        .dropna(subset=['datetouse_dt'])
+        .groupby('datetouse_dt', as_index=False)['total']
+        .sum()
+        .sort_values('datetouse_dt')
+    )
 
+    # Ensure datetime column
     revenue_df['datetouse_dt'] = pd.to_datetime(revenue_df['datetouse_dt'])
 
-    fig = px.scatter(
-        revenue_df,
-        x='datetouse_dt',
-        y='total',
-    )
+    # Use Scattergl for performance with many points
+    import plotly.graph_objects as go
+    fig = go.Figure()
 
-    fig.update_traces(
-        marker=dict(size=8, color='#FFA500'),  # subtle orange
-        line=dict(width=0),  # no connecting line
-        mode='markers'
-    )
+    fig.add_trace(go.Scattergl(
+        x=revenue_df['datetouse_dt'],
+        y=revenue_df['total'],
+        mode='markers',                  # just points
+        marker=dict(size=8, color='#FFA500'),
+        name='Revenue'
+    ))
 
-    # Add horizontal gridlines for easier reading
+    # Layout with horizontal gridlines and Streamlit dark mode styling
     fig.update_layout(
         height=500,
         xaxis_title="Date",
@@ -1397,6 +1406,7 @@ if not filtered_df.empty:
         xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
         yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.2)', zeroline=False)
     )
+
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.info("No data for selected filters.")
