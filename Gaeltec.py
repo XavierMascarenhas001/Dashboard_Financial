@@ -357,6 +357,11 @@ def generate_excel_styled_multilevel(filtered_df, poles_df=None):
     img2 = XLImage("Images/SPEN.png")
     img1.width = IMG_WIDTH_SMALL; img1.height = IMG_HEIGHT; img1.anchor = "B1"
     img2.width = IMG_WIDTH_LARGE; img2.height = IMG_HEIGHT; img2.anchor = "A1"
+
+    # Position images (row 1)
+    img1.anchor = "B1"
+    img2.anchor = "A1"
+
     ws.add_image(img1)
     ws.add_image(img2)
 
@@ -1210,23 +1215,55 @@ else:
         ]
         date_range_str = f"{start} → {end}"
 
-# -------------------------------
-# Totals
-# -------------------------------
-total_sum = filtered_df['total'].sum(skipna=True)
-variation_sum = (
-    (filtered_df['total'] - filtered_df['orig'])
-    .sum(skipna=True)
-    if 'orig' in filtered_df.columns
-    else 0
-)
+    # -------------------------------
+    # --- Total & Variation Display ---
+    # -------------------------------
+    total_sum, variation_sum = 0, 0
+    if 'total' in filtered_df.columns:
+        total_series = pd.to_numeric(filtered_df['total'].astype(str).str.replace(" ", "").str.replace(",", ".", regex=False),
+                                     errors='coerce')
+        total_sum = total_series.sum(skipna=True)
+        if 'orig' in filtered_df.columns:
+            orig_series = pd.to_numeric(filtered_df['orig'].astype(str).str.replace(" ", "").str.replace(",", ".", regex=False),
+                                        errors='coerce')
+            variation_sum = (total_series - orig_series).sum(skipna=True)
 
-st.markdown("## 💰 Financial Summary")
-st.metric("Total Revenue", f"£{total_sum:,.2f}")
-st.metric("Variation", f"£{variation_sum:,.2f}")
+    formatted_total = f"{total_sum:,.2f}".replace(",", " ").replace(".", ",")
+    formatted_variation = f"{variation_sum:,.2f}".replace(",", " ").replace(".", ",")
 
-st.caption(f"Filters: {date_range_str}")
+    # Money logo
+    money_logo_path = r"Images/Pound.png"
+    money_logo = Image.open(money_logo_path).resize((40, 40))
+    buffered = BytesIO()
+    money_logo.save(buffered, format="PNG")
+    money_logo_base64 = base64.b64encode(buffered.getvalue()).decode()
 
+    # Display Total & Variation (Centered)
+    st.markdown("<h2>Financial</h2>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center; color:white;'>Revenue</h3>", unsafe_allow_html=True)
+    try:
+        st.markdown(
+            f"""
+            <div style='display:flex; justify-content:center;'>
+                <div style='display:flex; flex-direction:column; gap:4px;'>
+                    <div style='display:flex; align-items:center; gap:10px;'>
+                        <h2 style='color:#32CD32; margin:0; font-size:36px;'><b>Total:</b> {formatted_total}</h2>
+                        <img src='data:image/png;base64,{money_logo_base64}' width='40' height='40'/>
+                    </div>
+                    <div style='display:flex; align-items:center; gap:8px;'>
+                        <h2 style='color:#32CD32; font-size:25px; margin:0;'><b>Variation:</b> {formatted_variation}</h2>
+                        <img src='data:image/png;base64,{money_logo_base64}' width='28' height='28'/>
+                    </div>
+                    <p style='text-align:center; font-size:14px; margin-top:4px;'>
+                        ({date_range_str}, Shires: {selected_shire}, Projects: {selected_project}, PMs: {selected_pm})
+                    </p>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    except Exception as e:
+        st.warning(f"Could not display Total & Variation: {e}")
 # -------------------------------
 # Revenue Over Time
 # -------------------------------
