@@ -1378,25 +1378,29 @@ if not filtered_df.empty:
         .sort_values('datetouse_dt')
     )
 
-    # Scatter plot instead of line plot
+    # Scatter plot with dashed lines
     fig = px.scatter(
         revenue_df,
         x='datetouse_dt',
         y='total',
-        size_max=15,  # max marker size
         title="Revenue Over Time"
     )
-    
-    # Update marker size and layout
+
+    # Update marker and line style
     fig.update_traces(
-        marker=dict(size=12, color='blue'),  # bigger points
-        showlegend=False
+        marker=dict(size=12, color='#FFA500'),  # orange points
+        line=dict(dash='dash', color='#FFA500'),  # dashed connecting lines
+        mode='lines+markers'  # show points and dashed lines
     )
+
     fig.update_layout(
         height=500,
         xaxis_title="Date",
         yaxis_title="Revenue (£)",
-        hovermode="x unified"
+        hovermode="x unified",
+        plot_bgcolor='rgba(0,0,0,0)',  # transparent background for dark mode
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white')  # white text for dark mode
     )
 
     st.plotly_chart(fig, use_container_width=True)
