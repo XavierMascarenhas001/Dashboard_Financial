@@ -1382,19 +1382,28 @@ if not filtered_df.empty and 'datetouse_dt' in filtered_df.columns and 'total' i
     # Ensure datetime column
     revenue_df['datetouse_dt'] = pd.to_datetime(revenue_df['datetouse_dt'])
 
-    # Use Scattergl for performance with many points
     import plotly.graph_objects as go
     fig = go.Figure()
 
+    # Scatter points (all data)
     fig.add_trace(go.Scattergl(
         x=revenue_df['datetouse_dt'],
         y=revenue_df['total'],
-        mode='markers',                  # just points
+        mode='markers',
         marker=dict(size=8, color='#FFA500'),
         name='Revenue'
     ))
 
-    # Layout with horizontal gridlines and Streamlit dark mode styling
+    # Dashed line connecting points
+    fig.add_trace(go.Scatter(
+        x=revenue_df['datetouse_dt'],
+        y=revenue_df['total'],
+        mode='lines',
+        line=dict(dash='dash', color='#FFA500'),
+        name='Trend'
+    ))
+
+    # Layout with horizontal gridlines
     fig.update_layout(
         height=500,
         xaxis_title="Date",
