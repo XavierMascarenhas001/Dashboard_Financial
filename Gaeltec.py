@@ -1283,7 +1283,7 @@ if {'datetouse_dt', 'team_name', 'total'}.issubset(filtered_df.columns):
     # -----------------------------
 
     # Make sure poles_df_view exists
-poles_df_view = pd.DataFrame()  # default empty
+    poles_df_view = pd.DataFrame()  # default empty
 
     # -----------------------------
     # 🔘 Segment selector
