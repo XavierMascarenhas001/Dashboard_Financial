@@ -45,70 +45,23 @@ def sanitize_sheet_name(name: str) -> str:
     name = re.sub(r'[^\x00-\x7F]', '_', name)
     return name[:31]
 
-def get_scottish_weather(api_key, location="Ayrshire"):
-    """
-    Get weather data for Scottish locations
-    """
-    # Coordinates for Scottish locations
-    locations = {
-        "Ayrshire": {"lat": 55.458, "lon": -4.629},
-        "Lanarkshire": {"lat": 55.676, "lon": -3.785},
-        "Glasgow": {"lat": 55.864, "lon": -4.252},
-        "Edinburgh": {"lat": 55.953, "lon": -3.188}
-    }
+def preprocess_df(df, date_column='datetouse', numeric_cols=['total','orig']):
+    # Ensure column names are lowercase and stripped
+    df.columns = df.columns.str.strip().str.lower()
     
-    if location in locations:
-        coords = locations[location]
-    else:
-        # Default to Ayrshire
-        coords = locations["Ayrshire"]
-    
-    base_url = "http://api.openweathermap.org/data/2.5/weather"
-    params = {
-        'lat': coords["lat"],
-        'lon': coords["lon"],
-        'appid': api_key,
-        'units': 'metric'
-    }
-    
-    try:
-        response = requests.get(base_url, params=params)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching weather data: {e}")
-        return None
+    # Dates
+    df[date_column + '_dt'] = pd.to_datetime(df.get(date_column), errors='coerce').dt.normalize()
+    df[date_column + '_display'] = df[date_column + '_dt'].dt.strftime("%d/%m/%Y")
+    df[date_column + '_display'].fillna("Unplanned", inplace=True)
 
-@cache_data(ttl=1800)  # Cache for 30 minutes
-def get_weather_forecast(api_key, location="Ayrshire"):
-    """
-    Get 5-day forecast for Scottish locations
-    """
-    locations = {
-        "Ayrshire": {"lat": 55.458, "lon": -4.629},
-        "Lanarkshire": {"lat": 55.676, "lon": -3.785}
-    }
-    
-    if location in locations:
-        coords = locations[location]
-    else:
-        coords = locations["Ayrshire"]
-    
-    base_url = "http://api.openweathermap.org/data/2.5/forecast"
-    params = {
-        'lat': coords["lat"],
-        'lon': coords["lon"],
-        'appid': api_key,
-        'units': 'metric'
-    }
-    
-    try:
-        response = requests.get(base_url, params=params)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        st.error(f"Forecast API error: {e}")
-        return None
+    # Numeric columns
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(
+                df[col].astype(str).str.replace(" ", "").str.replace(",", ".", regex=False),
+                errors='coerce'
+            )
+    return df
 
 
 def poles_to_word(df: pd.DataFrame) -> BytesIO:
@@ -1153,6 +1106,7 @@ st.header("Upload Data Files")
 # -------------------------------
 # Load Aggregated Parquet
 # -------------------------------
+
 @st.cache_data
 def load_master(file):
     df = pd.read_parquet(file, engine='pyarrow')  # pyarrow is faster
