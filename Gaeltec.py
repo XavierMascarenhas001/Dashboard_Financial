@@ -1189,10 +1189,16 @@ if master_file:
     base_df.columns = base_df.columns.str.strip().str.lower()
 
     # Normalize date
-    if 'datetouse' in base_df.columns:
-        base_df['datetouse_dt'] = pd.to_datetime(base_df['datetouse'], errors='coerce').dt.normalize()
-    else:
-        base_df['datetouse_dt'] = pd.NaT
+    if date_source == "Planned + Done (datetouse)":
+        if 'datetouse' in base_df.columns:
+            base_df['datetouse_dt'] = pd.to_datetime(base_df['datetouse'], errors='coerce').dt.normalize()
+        else:
+            base_df['datetouse_dt'] = pd.NaT
+    elif date_source == "Done Only (done)":
+        if 'done' in base_df.columns:
+            base_df['datetouse_dt'] = pd.to_datetime(base_df['done'], errors='coerce').dt.normalize()
+        else:
+            base_df['datetouse_dt'] = pd.NaT
 
     # Normalize numeric columns
     for col in ['total', 'orig']:
@@ -1209,6 +1215,7 @@ if master_file:
 if base_df is None:
     st.info("Please upload Master.parquet to continue.")
     st.stop()
+
 
 # -------------------------------
 # Sidebar Filters
