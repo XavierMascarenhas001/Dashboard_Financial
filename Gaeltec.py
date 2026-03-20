@@ -63,6 +63,27 @@ def preprocess_df(df, date_column='datetouse', numeric_cols=['total','orig']):
             )
     return df
 
+def prepare_dataframe(df):
+    df = df.copy()
+    df.columns = df.columns.str.strip().str.lower()
+
+    if 'datetouse' in df.columns:
+        df['datetouse_dt'] = pd.to_datetime(df['datetouse'], errors='coerce').dt.normalize()
+    else:
+        df['datetouse_dt'] = pd.NaT
+
+    # Make numeric columns safe
+    for col in ['total', 'orig']:
+        if col in df.columns:
+            df[col] = (
+                df[col].astype(str)
+                .str.replace(" ", "")
+                .str.replace(",", ".", regex=False)
+                .astype(float)
+            )
+
+    return df
+
 
 def poles_to_word(df: pd.DataFrame) -> BytesIO:
     doc = Document()
