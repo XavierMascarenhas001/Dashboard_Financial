@@ -1203,7 +1203,13 @@ if master_file is not None:
         df['datetouse_display'] = "Unplanned"
 
     agg_view = df.copy()
-
+# -------------------------------
+# Date Source Selector
+# -------------------------------
+date_source = st.sidebar.radio(
+    "Select Date Source",
+    ["Planned + Done (datetouse)", "Done Only (done)"]
+)
 # -------------------------------
 # --- Team Filter (GLOBAL) ---
 # -------------------------------
@@ -1269,6 +1275,7 @@ filter_type = st.sidebar.selectbox(
 )
 
 date_range_str = ""
+filtered_df['datetouse_dt'] = pd.to_datetime(filtered_df['datetouse_dt'])
 
 if filter_type == "Unplanned":
     filtered_df = filtered_df[filtered_df['datetouse_dt'].isna()]
@@ -1283,7 +1290,7 @@ else:
         date_range_str = str(d)
 
     elif filter_type == "Week":
-        start = st.sidebar.date_input("Week start")
+        start = pd.Timestamp(st.sidebar.date_input("Week start"))
         end = start + pd.Timedelta(days=6)
         filtered_df = filtered_df[
             (filtered_df['datetouse_dt'] >= start) &
@@ -1305,13 +1312,14 @@ else:
         date_range_str = str(y)
 
     elif filter_type == "Custom Range":
-        start = st.sidebar.date_input("Start date")
-        end = st.sidebar.date_input("End date")
+        start = pd.Timestamp(st.sidebar.date_input("Start date"))
+        end = pd.Timestamp(st.sidebar.date_input("End date"))
         filtered_df = filtered_df[
             (filtered_df['datetouse_dt'] >= start) &
             (filtered_df['datetouse_dt'] <= end)
         ]
         date_range_str = f"{start} → {end}"
+
 
     # -------------------------------
     # --- Total & Variation Display ---
