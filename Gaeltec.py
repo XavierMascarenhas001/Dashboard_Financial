@@ -1153,11 +1153,18 @@ st.header("Upload Data Files")
 # -------------------------------
 # Load Aggregated Parquet
 # -------------------------------
-master_file = st.file_uploader(
-    "Upload Master.parquet",
-    type=["parquet"],
-    key="master"
-)
+@st.cache_data
+def load_master(file):
+    df = pd.read_parquet(file, engine='pyarrow')  # pyarrow is faster
+    df = preprocess_df(df)                        # preprocess once
+    return df
+
+master_file = st.file_uploader("Upload Master.parquet", type=["parquet"], key="master")
+base_df = None
+
+if master_file is not None:
+    base_df = load_master(master_file)
+
 
 resume_file = st.file_uploader(
     "Upload CF_resume.parquet",
@@ -1189,20 +1196,6 @@ st.header("Upload Data Files")
 
 agg_view = None
 
-if master_file is not None:
-    df = pd.read_parquet(master_file)
-    df.columns = df.columns.str.strip().str.lower()  # normalize columns
-
-    if 'datetouse' in df.columns:
-        df['datetouse_dt'] = pd.to_datetime(df['datetouse'], errors='coerce')
-        df['datetouse_display'] = df['datetouse_dt'].dt.strftime("%d/%m/%Y")
-        df.loc[df['datetouse_dt'].isna(), 'datetouse_display'] = "Unplanned"
-        df['datetouse_dt'] = df['datetouse_dt'].dt.normalize()
-    else:
-        df['datetouse_dt'] = pd.NaT
-        df['datetouse_display'] = "Unplanned"
-
-    agg_view = df.copy()
 # -------------------------------
 # Date Source Selector
 # -------------------------------
@@ -1210,6 +1203,7 @@ date_source = st.sidebar.radio(
     "Select Date Source",
     ["Planned + Done (datetouse)", "Done Only (done)"]
 )
+
 # -------------------------------
 # --- Team Filter (GLOBAL) ---
 # -------------------------------
